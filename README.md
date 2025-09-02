@@ -1,4 +1,4 @@
-## PandemicExerciseSimulator
+## TACCSTER_PES_SensitivityAnalysis
 
 This is a stand-alone Python command line implementation of an outbreak
 simulator using a SEATIRD compartment model and binomial travel model.
@@ -9,8 +9,8 @@ Depends on [Poetry](https://python-poetry.org/docs/#installation) for native ins
 After installing Poetry, do:
 
 ```
-$ git clone https://github.com/TACC/PandemicExerciseSimulator
-$ cd PandemicExerciseSimulator/
+$ git clone https://github.com/emjavan/TACCSTER_PES_SensitivityAnalysis
+$ cd TACCSTER_PES_SensitivityAnalysis/
 $ poetry install --no-root
 ```
 
@@ -26,17 +26,6 @@ $ poetry run python3 src/simulator.py -l INFO -d 10 -i data/texas/INPUT.json
 
 ```
 $ poetry run pytest
-```
-
-### Run Using Docker (Preferred):
-
-As an alternative to Poetry, you can instead run a containerized version of the
-simulator with [Docker](https://docs.docker.com/engine/install/).
-
-```
-$ docker build -t pes:0.1.0 .
-$ docker run --rm pes:0.1.0 python3 src/simulator.py --help
-$ docker run --rm pes:0.1.0 python3 src/simulator.py -l INFO -d 10 -i data/texas/INPUT.json
 ```
 
 ### Input Data Required:
