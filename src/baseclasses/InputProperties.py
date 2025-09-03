@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -9,31 +10,27 @@ class InputProperties:
 
     def __init__(self, input_filename:str):
         
-        logger.info(f'loaded in config file named {input_filename}')
         with open(input_filename, 'r') as f:
             input = json.load(f)
+        logger.info(f'loaded in config file named {input_filename}')
 
         # simulation control
+        self.output_dir_path        = input['output_dir_path']
         self.number_of_realizations = int(input['number_of_realizations'])
-        self.output_data_file       = input['output']
-
-        # parameters
-        self.R0         = input['parameters']['R0']
-        self.beta_scale = input['parameters']['beta_scale']  # "R0CorrectionFactor"
-        self.tau        = input['parameters']['tau']
-        self.kappa      = input['parameters']['kappa']
-        self.gamma      = input['parameters']['gamma']
-        self.chi        = input['parameters']['chi']
-        self.rho        = input['parameters']['rho']
-        self.nu         = input['parameters']['nu']
 
         # data files
         self.population_data_file         = input['data']['population']
         self.contact_data_file            = input['data']['contact']
         self.flow_data_file               = input['data']['flow']
-        self.flow_reduction_file          = input['data']['flow_reduction']
         self.high_risk_ratios_file        = input['data']['high_risk_ratios']
-        self.relative_susceptibility_file = input['data']['relative_susceptibility'] # SIGMA
+        
+        # disease model
+        self.disease_model      = input['disease_model']['identity']
+        self.disease_parameters = input['disease_model']['parameters']
+
+        # travel model
+        self.travel_model      = input['travel_model']['identity']
+        self.travel_parameters = input['travel_model']['parameters']
 
         # initial infected
         self.initial     = input['initial_infected']
@@ -47,11 +44,9 @@ class InputProperties:
         self.antiviral_stockpile      = input.get('antivirals').get('antiviral_stockpile', [])
         
         # vaccines (optional)
-        self.vaccine_wastage_factor   = input.get('vaccines').get('vaccine_wastage_factor', 0)
-        self.vaccine_pro_rata         = input.get('vaccines').get('vaccine_pro_rata', None)
-        self.vaccine_adherence        = input.get('vaccines').get('vaccine_adherence', [])
-        self.vaccine_effectiveness    = input.get('vaccines').get('vaccine_effectiveness', [])
-        self.vaccine_stockpile        = input.get('vaccines').get('vaccine_stockpile', [])
+        vaccine_input = input.get('vaccine_model', {})  # returns {} if not present
+        self.vaccine_model = vaccine_input.get('identity', None)
+        self.vaccine_parameters = vaccine_input.get('parameters', {})
 
         logger.info(f'instantiated InputProperties object')
         logger.debug(f'{self}')
@@ -63,45 +58,54 @@ class InputProperties:
 
 
     def __str__(self) -> str:
-        return( f'\n'
+        return( f'\n\n'
                 f'## SIMULATION CONTROL ##\n'
+                f'output_dir_path={self.output_dir_path}\n'
                 f'number_of_realizations={self.number_of_realizations}\n'
-                f'output_data_file={self.output_data_file}\n'
-                f'## PARAMETERS ##\n'
-                f'R0={self.R0}\n'
-                f'beta_scale={self.beta_scale}\n'
-                f'tau={self.tau}\n'
-                f'kappa={self.kappa}\n'
-                f'gamma={self.gamma}\n'
-                f'chi={self.chi}\n'
-                f'rho={self.rho}\n'
-                f'nu={self.nu}\n'
-                f'## DATA FILES ##\n'
+                f'\n## DATA FILES ##\n'
                 f'population_data_file={self.population_data_file}\n'
                 f'contact_data_file={self.contact_data_file}\n'
                 f'flow_data_file={self.flow_data_file}\n'
-                f'flow_reduction_file={self.flow_data_file}\n'
                 f'high_risk_ratios_file={self.high_risk_ratios_file}\n'
-                f'relative_susceptibility_file={self.relative_susceptibility_file}\n'
-                f'## INITIAL INFECTIONS ##\n'
+                f'\n## DISEASE MODEL ##\n'
+                f'disease_model={self.disease_model}\n'
+                f'disease_parameters={self.disease_parameters}\n'
+                f'\n## TRAVEL MODEL ##\n'
+                f'travel_model={self.travel_model}\n'
+                f'travel_parameters={self.travel_parameters}\n'  
+                f'\n## INITIAL INFECTIONS ##\n'
                 f'initial={self.initial}\n'
-                f'## NON-PHARMACEUTICAL INTERVENTIONS ##\n'
+                f'\n## NON-PHARMACEUTICAL INTERVENTIONS ##\n'
                 f'non_pharma_interventions={self.non_pharma_interventions}\n'
-                f'## ANTIVIRALS ##\n'
+                f'\n## ANTIVIRALS ##\n'
                 f'antiviral_effectiveness={self.antiviral_effectiveness}\n'
                 f'antiviral_wastage_factor={self.antiviral_wastage_factor}\n'
                 f'antiviral_stockpile={self.antiviral_stockpile}\n'
-                f'## VACCINES ##\n'
-                f'vaccine_wastage_factor={self.vaccine_wastage_factor}\n'
-                f'vaccine_pro_rata={self.vaccine_pro_rata}\n'
-                f'vaccine_adherence={self.vaccine_adherence}\n'
-                f'vaccine_effectiveness={self.vaccine_effectiveness}\n'
-                f'vaccine_stockpile={self.vaccine_stockpile}\n'
+                f'\n## VACCINES ##\n'
+                f'vaccine_model={self.vaccine_model}\n'
+                f'vaccine_parameters={self.vaccine_parameters}\n'
               )
 
 
-    # TODO add some functions in here to verify that we got all the data
     def _validate_input(self) -> bool:
+
+        # Check output dir was created
+        if not os.path.isdir(self.output_dir_path):
+            logger.error(f'Output directory not found: {self.output_dir_path}')
+            return False
+        
+        # verify that all input data files exist
+        for data_file in [self.population_data_file,
+                          self.contact_data_file,
+                          self.flow_data_file,
+                          self.high_risk_ratios_file]:
+            try:
+                with open(data_file, 'r') as f:
+                    pass
+            except FileNotFoundError as e:
+                logger.error(f'Could not open data file {data_file}: {e}')
+                return False
+        
         return True
 
 
