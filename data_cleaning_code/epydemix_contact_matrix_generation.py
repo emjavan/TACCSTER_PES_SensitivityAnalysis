@@ -1,3 +1,6 @@
+# Write state specific contact matrices for all settings and work
+#  to state folders
+
 from epydemix.population import Population, load_epydemix_population
 from pathlib import Path
 import pandas as pd
