@@ -1,0 +1,31 @@
+STATE_NAME,COUNTY_NAME,fips,0-4,5-17,18-49,50-64,65+
+Alaska,Aleutians East Borough,02013,106,304,1762,858,393
+Alaska,Aleutians West Census Area,02016,119,564,2804,1361,330
+Alaska,Anchorage Municipality,02020,18776,49878,134108,50371,35936
+Alaska,Bethel Census Area,02050,1957,4483,7696,2869,1482
+Alaska,Bristol Bay Borough,02060,64,82,369,242,121
+Alaska,Chugach Census Area,02063,462,1066,2986,1539,911
+Alaska,Copper River Census Area,02066,180,505,764,600,577
+Alaska,Denali Borough,02068,79,189,1138,347,276
+Alaska,Dillingham Census Area,02070,414,1061,1921,790,594
+Alaska,Fairbanks North Star Borough,02090,6778,16100,46159,14833,11685
+Alaska,Haines Borough,02100,61,395,484,580,557
+Alaska,Hoonah-Angoon Census Area,02105,83,269,756,572,633
+Alaska,Juneau City and Borough,02110,1586,4911,14156,6476,4840
+Alaska,Kenai Peninsula Borough,02122,3385,9904,22751,12225,11578
+Alaska,Ketchikan Gateway Borough,02130,654,2226,5668,2924,2398
+Alaska,Kodiak Island Borough,02150,724,2348,6034,2150,1622
+Alaska,Kusilvak Census Area,02158,1074,2385,3170,1117,531
+Alaska,Lake and Peninsula Borough,02164,72,203,489,142,101
+Alaska,Matanuska-Susitna Borough,02170,7044,21675,46654,20591,14713
+Alaska,Nome Census Area,02180,858,2511,4250,1470,836
+Alaska,North Slope Borough,02185,636,2078,5152,2167,858
+Alaska,Northwest Arctic Borough,02188,788,2073,2976,1135,639
+Alaska,Petersburg Borough,02195,154,498,1266,730,746
+Alaska,Prince of Wales-Hyder Census Area,02198,299,926,1995,1346,1164
+Alaska,Sitka City and Borough,02220,385,1262,3587,1710,1449
+Alaska,Skagway Municipality,02230,65,112,625,273,233
+Alaska,Southeast Fairbanks Census Area,02240,500,1251,2678,1408,1099
+Alaska,Wrangell City and Borough,02275,137,296,738,432,503
+Alaska,Yakutat City and Borough,02282,29,37,174,126,140
+Alaska,Yukon-Koyukuk Census Area,02290,356,1041,2014,990,870

@@ -1,0 +1,10 @@
+STATE_NAME,COUNTY_NAME,fips,0-4,5-17,18-49,50-64,65+
+Connecticut,Capitol Planning Region,09110,49427,148495,402395,197205,171507
+Connecticut,Greater Bridgeport Planning Region,09120,17622,55030,133597,68580,51467
+Connecticut,Lower Connecticut River Valley Planning Region,09130,7154,22592,66335,41094,37808
+Connecticut,Naugatuck Valley Planning Region,09140,22997,69293,179005,96352,84656
+Connecticut,Northeastern Connecticut Planning Region,09150,4399,13437,37220,22521,18252
+Connecticut,Northwest Hills Planning Region,09160,4786,15614,40286,27061,25101
+Connecticut,South Central Connecticut Planning Region,09170,28367,83793,234855,116664,103124
+Connecticut,Southeastern Connecticut Planning Region,09180,13480,41141,112357,58904,53143
+Connecticut,Western Connecticut Planning Region,09190,33008,103363,243311,135836,105714
