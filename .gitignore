@@ -5,3 +5,11 @@ __pycache__/
 *.pyc
 *.swp
 *.xml
+.Rproj.user
+.vscode/
+**/input.json
+.idea/
+
+data/BRFSS/
+data/NSCH/
+data/private_input_data/
