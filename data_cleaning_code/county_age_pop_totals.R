@@ -60,28 +60,36 @@ for(state in state_names){
 #///////////////////////
 #### LARGEST COUNTY ####
 # Initially will infect 1% of most populous county that is LOW risk
-risk_ratios = read_csv("../data/all_US_high-risk-ratios-detailed.csv")
-init_inf_df = county_age_pop %>%
-  gather(age_group, POP_ACS, -STATE_NAME, -COUNTY_NAME, -fips) %>%
-  left_join(risk_ratios, by=c("age_group", "STATE_NAME")) %>%
-  filter(age_group=="18-49") %>%
-  group_by(STATE_NAME) %>%
-  arrange(desc(POP_ACS)) %>%
-  slice(1) %>%
-  ungroup() %>%
-  rowwise() %>%
-  mutate(low_risk_POP = floor((1-frac_high_risk)*POP_ACS)) %>%
-  ungroup() %>%
-  mutate(`init_inf_1percent_18-49`            = floor(0.01*low_risk_POP),
-         `init_inf_half-percent_18-49`        = floor(0.005*low_risk_POP),
-         `init_inf_1percent_18-49_capped`     = ifelse(`init_inf_1percent_18-49`    >10000, 10000, `init_inf_1percent_18-49`),
-         `init_inf_half-percent_18-49_capped` = ifelse(`init_inf_half-percent_18-49`>10000, 10000, `init_inf_half-percent_18-49`)
-         )
 
-write.csv(init_inf_df,
-          "../data/all_US_initial_infected.csv",
-          row.names = FALSE, quote = FALSE
-          )  
+init_inf_file = "../data/all_US_initial_infected.csv"
+if(!file.exists(init_inf_file)){
+  risk_ratios = read_csv("../data/all_US_high-risk-ratios-detailed.csv")
+  init_inf_df = county_age_pop %>%
+    gather(age_group, POP_ACS, -STATE_NAME, -COUNTY_NAME, -fips) %>%
+    left_join(risk_ratios, by=c("age_group", "STATE_NAME")) %>%
+    filter(age_group=="18-49") %>%
+    group_by(STATE_NAME) %>%
+    arrange(desc(POP_ACS)) %>%
+    slice(1) %>%
+    ungroup() %>%
+    rowwise() %>%
+    mutate(low_risk_POP = floor((1-frac_high_risk)*POP_ACS)) %>%
+    ungroup() %>%
+    mutate(`init_inf_1percent_18-49`            = floor(0.01*low_risk_POP),
+           `init_inf_half-percent_18-49`        = floor(0.005*low_risk_POP),
+           `init_inf_1percent_18-49_capped`     = ifelse(`init_inf_1percent_18-49`    >10000, 10000, `init_inf_1percent_18-49`),
+           `init_inf_half-percent_18-49_capped` = ifelse(`init_inf_half-percent_18-49`>10000, 10000, `init_inf_half-percent_18-49`)
+    )
+  
+  write.csv(init_inf_df,
+            init_inf_file,
+            row.names = FALSE, quote = FALSE
+  )
+}else{
+  init_inf_df = read_csv("../data/all_US_initial_infected.csv")
+} # end if file needs to be made or exists
+
+
   
 
 

@@ -292,17 +292,40 @@ for(state in states){
     filter(STATE_NAME == state) %>%
     arrange(age_group)
   
-  file_path_detailed = paste0("../data/", state_name_hypen, "/state_", state_name_hypen, "_high-risk-ratios-detailed.csv")
+  file_path_detailed = paste0("../data/", state_name_hypen, "/state_", state_name_hypen, "_high-risk-ratios-flu-detailed.csv")
   write.csv(state_age_df,
             file_path_detailed,
             row.names = FALSE, quote = FALSE)
   
-  file_path_only = paste0("../data/", state_name_hypen, "/state_", state_name_hypen, "_high-risk-ratios-only.csv")
+  file_path_only = paste0("../data/", state_name_hypen, "/state_", state_name_hypen, "_high-risk-ratios-flu-only.csv")
   write.table(state_age_df %>%
-                dplyr::select(frac_high_risk), 
+                dplyr::select(frac_high_risk),
               file_path_only,
               sep = ",", col.names = FALSE,  row.names = FALSE, quote = FALSE)
 } # end loop over states
+
+
+
+#//////////////////////
+#### SUMMARY STATS ####
+
+all_age_df %>%
+  group_by(age_group) %>%
+  summarise(risk_med = median(frac_high_risk),
+            risk_med_low = median(frac_high_risk_low),
+            risk_med_upp = median(frac_high_risk_upp)
+            )
+
+ggplot(all_age_df, aes(x=age_group, y=frac_high_risk))+
+  geom_boxplot()+
+  theme_bw()
+
+
+
+
+
+
+
 
 
 
