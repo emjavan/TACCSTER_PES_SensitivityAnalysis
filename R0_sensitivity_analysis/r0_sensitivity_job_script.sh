@@ -3,7 +3,7 @@
 #SBATCH   -J r0_sensitivity
 #SBATCH   -o r0_sensitivity.o%j
 #SBATCH   -e r0_sensitivity.o%j
-#SBATCH   –ntasks-per-node 1                # this parameter is ignored
+#SBATCH   --ntasks-per-node 1                # this parameter is ignored
 #SBATCH   -N 2
 #SBATCH   -t 0:40:00
 #SBATCH   -A  TACC-SCI
@@ -15,4 +15,5 @@
 
 
 module load python3
+module load pylauncher
 python3 r0_sensitivity_launcher.py
