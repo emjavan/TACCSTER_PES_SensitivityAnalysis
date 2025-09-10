@@ -10,6 +10,9 @@
 #SBATCH   --mail-user=emjavan@utexas.edu    # Email for notifications
 #SBATCH   --mail-type=all                   # Type of notifications, begin, end, fail, all
 
-poetry install --no-root
+# Only have to run once when git repo just cloned
+#poetry install --no-root
+
+
 module load python3
-python3 example_classic_launcher.py
+python3 r0_sensitivity_launcher.py
