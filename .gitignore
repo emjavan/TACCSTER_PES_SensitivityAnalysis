@@ -13,3 +13,6 @@ __pycache__/
 data/BRFSS/
 data/NSCH/
 data/private_input_data/
+
+R_scripts/.RDataTmp
+R_scripts/.Rhistory
