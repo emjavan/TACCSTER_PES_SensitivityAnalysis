@@ -1,11 +1,11 @@
 {
-  "output_dir_path": "seir-deterministic",
-  "number_of_realizations": "2",
+  "output_dir_path": "seirs-deterministic",
+  "number_of_realizations": "1",
   "data": {
-    "population": "data/Single-Node-Test/county_age_matrix_500.csv",
-    "contact": "data/Single-Node-Test/contact_matrix.csv",
-    "flow": "data/Single-Node-Test/travel_work_matrix.csv",
-    "high_risk_ratios": "data/Single-Node-Test/high_risk_ratios_equal.csv"
+    "population": "../data/Single-Node-Test/county_age_matrix_500.csv",
+    "contact": "../data/Single-Node-Test/contact_matrix.csv",
+    "flow": "../data/Single-Node-Test/travel_work_matrix.csv",
+    "high_risk_ratios": "../data/Single-Node-Test/high_risk_ratios_equal.csv"
   },
   "disease_model": {
     "identity": "seirs-deterministic",
@@ -14,7 +14,7 @@
       "R0": "3",
       "latent_period_days": "7",
       "infectious_period_days": "14",
-      "immune_period_days": "0"
+      "immune_period_days": "120"
     }
   },
   "travel_model": {
@@ -44,6 +44,6 @@
     }
   ],
   "non_pharma_interventions": [],
-  "antivirals": {},
+  "antiviral_model": {},
   "vaccine_model": {}
 }
