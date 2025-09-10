@@ -5,7 +5,9 @@ import logging
 import shutil
 import os
 from typing import Type
-from icecream import ic
+import time
+import csv
+from pathlib import Path
 
 from baseclasses.Day import Day
 from baseclasses.InputProperties import InputProperties
@@ -117,7 +119,6 @@ def main():
     shutil.copyfile(input_file_path, copied_input_path)
     logger.info(f'Copied input file to: {copied_input_path}')
 
-
     # Also used for exporting day-by-day summary information
     realization_number = int(simulation_properties.number_of_realizations)
     
@@ -165,7 +166,10 @@ def main():
     travel_parent = TravelModel(parameters)
     travel_model  = travel_parent.get_child(simulation_properties.travel_model)
 
+    # prepare list to store results
+    timing_results = []
     for r in range(realization_number):
+        start_time = time.perf_counter()
         # Initialize Days class instance, resets snapshot
         simulation_days = Day(args.days)
 
@@ -184,7 +188,18 @@ def main():
              travel_model,
              writer
            )
-        
+        # capture elapsed time
+        elapsed = time.perf_counter() - start_time
+        timing_results.append({"sim_num": r, "time_seconds": elapsed})
+
+    csv_time_path = Path(simulation_properties.output_dir_path) / "simulation_times.csv"
+    with open(csv_time_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["sim_num", "time_seconds"])
+        writer.writeheader()
+        writer.writerows(timing_results)
+
+    logger.info(f"Wrote simulation timing results to {csv_time_path}")
+
     return
 
 
