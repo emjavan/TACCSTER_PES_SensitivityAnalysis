@@ -63,7 +63,7 @@ class DeterministicSEATIRD(DiseaseModel):
         # population. use multiplier 9x to derive values for high risk population
         self.nu_values      = [[],[]]
         self.nu_values[0]   = [float(x)   for x in self.parameters.disease_parameters['nu']]
-        self.nu_values[1]   = [float(x)*9 for x in self.parameters.disease_parameters['nu']]
+        self.nu_values[1]   = [float(x)*6 for x in self.parameters.disease_parameters['nu']]
 
         # transpose nu_values so that we can access values in the order we are used to
         #   e.g.:    nu_values[age][risk]
