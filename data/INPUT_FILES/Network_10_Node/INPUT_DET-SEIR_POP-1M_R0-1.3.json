@@ -1,0 +1,42 @@
+{
+  "output_dir_path": "seir-deterministic_Network-10-Node_POP-1M_R0-1.3",
+  "number_of_realizations": "10",
+  "data": {
+    "population": "../data/Network_10_Node/county_age_matrix_1M.csv",
+    "contact": "../data/Network_10_Node/contact_matrix.csv",
+    "flow": "../data/Network_10_Node/travel_work_matrix.csv",
+    "high_risk_ratios": "../data/Network_10_Node/high_risk_ratios_equal.csv"
+  },
+  "disease_model": {
+    "identity": "seirs-deterministic",
+    "parameters": {
+      "compartments": ["S", "E", "I", "R"],
+      "R0": "1.3",
+      "latent_period_days": "7",
+      "infectious_period_days": "14"
+    }
+  },
+  "travel_model": {
+    "identity": "binomial",
+    "parameters": {
+      "rho": "1",
+      "flow_reduction": ["1.0", "1.0", "1.0", "1.0", "1.0"],
+      "traveling_compartments": {
+        "I": "0.2"
+      },
+      "transmitting_compartments": {
+        "I": "1.0"
+      }
+    }
+  },
+  "initial_infected": [
+    {
+      "county": "10000",
+      "infected": "2000",
+      "age_group": "2"
+    }
+  ],
+  "non_pharma_interventions": [],
+  "antiviral_model": {},
+  "vaccine_model": {}
+}

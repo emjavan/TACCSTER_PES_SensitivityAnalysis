@@ -27,13 +27,18 @@ base_files = list.files(path        = input_dir_path,
                         full.names  = TRUE, recursive  = TRUE
                         )
 
+# For each file, get the relative path and create the network size sub dirs
+network_dirs = unique(basename(dirname(base_files)))
+target_dirs  = file.path(final_output_dir_path, network_dirs) # build the full output dirs
+dir_create(target_dirs, recurse = TRUE) # create dirs and subdirs
+
 # Generate new inputs
 inputs = expand_grid(input_file_template = base_files, R0 = R0_grid) %>%
   mutate(out_dir_prefix = final_output_dir_path) %>%
   # assuming in folders ../data/INPUT_FILE_TEMPLATES/Network_*_Node/
-  separate(input_file_template, into = c(NA, NA, NA, NA, "filename_only"), sep="\\/", remove=F) %>%
+  separate(input_file_template, into = c(NA, NA, NA, "network_size", "filename_only"), sep="\\/", remove=F) %>%
   rowwise() %>%
-  mutate(output_file_path = paste0(out_dir_prefix, "/", filename_only),
+  mutate(output_file_path = paste0(out_dir_prefix, "/", network_size, "/", filename_only),
          r0_hyphen        = r0_period_to_hypen(R0),
          output_file_path = str_replace(output_file_path, "3", as.character(R0))
          ) %>%
