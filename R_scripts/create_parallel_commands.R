@@ -17,20 +17,21 @@ r0_period_to_hypen <- function(R0) str_replace(formatC(R0, format = "f", digits 
 
 # R0 options to test
 R0_grid = seq(0.5, 4.1, by = 0.2) # 19, R0=3 template not in set
-
+ 
 # Find the base files
 input_dir_path   = "../data/INPUT_FILE_TEMPLATES"      # where files are written (FS path from here)
 final_output_dir_path  = "../data/INPUT_FILES"
 if(!dir.exists(final_output_dir_path)){ dir.create(final_output_dir_path) }
 base_files = list.files(path        = input_dir_path,
                         pattern     = "^INPUT_.*R0-3\\.json$",
-                        full.names  = TRUE
+                        full.names  = TRUE, recursive  = TRUE
                         )
 
 # Generate new inputs
 inputs = expand_grid(input_file_template = base_files, R0 = R0_grid) %>%
   mutate(out_dir_prefix = final_output_dir_path) %>%
-  separate(input_file_template, into = c(NA, NA, NA, "filename_only"), sep="\\/", remove=F) %>%
+  # assuming in folders ../data/INPUT_FILE_TEMPLATES/Network_*_Node/
+  separate(input_file_template, into = c(NA, NA, NA, NA, "filename_only"), sep="\\/", remove=F) %>%
   rowwise() %>%
   mutate(output_file_path = paste0(out_dir_prefix, "/", filename_only),
          r0_hyphen        = r0_period_to_hypen(R0),

@@ -1,0 +1,49 @@
+{
+  "output_dir_path": "seatird-stochastic_POP-100K_R0-2.7",
+  "number_of_realizations": "10",
+  "data": {
+    "population": "../data/Network_1_Node/county_age_matrix_100K.csv",
+    "contact": "../data/Network_1_Node/contact_matrix.csv",
+    "flow": "../data/Network_1_Node/travel_work_matrix.csv",
+    "high_risk_ratios": "../data/Network_1_Node/high_risk_ratios_equal.csv"
+  },
+  "disease_model": {
+    "identity": "seatird-stochastic",
+    "parameters": {
+      "compartments": ["S", "E", "A", "T", "I", "R", "D"],
+      "R0": "2.7",
+      "beta_scale": "14",
+      "tau": "7",
+      "kappa": "2",
+      "gamma": "14.0281",
+      "chi": "3",
+      "nu": ["0.002", "0.002", "0.002", "0.002", "0.002"],
+      "sigma": ["1", "1", "1", "1", "1"]
+    }
+  },
+  "travel_model": {
+    "identity": "binomial",
+    "parameters": {
+      "rho": "1",
+      "flow_reduction": ["1.0", "1.0", "1.0", "1.0", "1.0"],
+      "traveling_compartments": {
+        "A": "1.0"
+      },
+      "transmitting_compartments": {
+        "A": "1.0",
+        "T": "1.0",
+        "I": "1.0"
+      }
+    }
+  },
+  "initial_infected": [
+    {
+      "county": "10000",
+      "infected": "2000",
+      "age_group": "2"
+    }
+  ],
+  "non_pharma_interventions": [],
+  "antiviral_model": {},
+  "vaccine_model": {}
+}
