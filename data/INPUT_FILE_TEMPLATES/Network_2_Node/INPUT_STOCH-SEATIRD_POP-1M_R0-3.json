@@ -1,5 +1,5 @@
 {
-  "output_dir_path": "seatird-stochastic_Network-2-Node_POP-1M",
+  "output_dir_path": "seatird-stochastic_POP-1M",
   "number_of_realizations": "10",
   "data": {
     "population": "../data/Network_2_Node/county_age_matrix_1M.csv",

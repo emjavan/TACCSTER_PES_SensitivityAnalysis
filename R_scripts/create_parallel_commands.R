@@ -43,13 +43,14 @@ inputs = expand_grid(input_file_template = base_files, R0 = R0_grid) %>%
          output_file_path = str_replace(output_file_path, "3", as.character(R0))
          ) %>%
   ungroup() %>%
-  dplyr::select(input_file_template, R0, output_file_path)
+  dplyr::select(input_file_template, network_size, R0, output_file_path)
   
 input_exanded_tbl = inputs %>%
   rename(fin  = input_file_template,
+         fpre = network_size,
          r0   = R0,
          fout = output_file_path) %>%
-  pmap_chr(function(fin, r0, fout) {
+  pmap_chr(function(fin, fpre, r0, fout) {
            tpl <- read_json(fin, simplifyVector = TRUE)
            
            # change R0 inside the template
@@ -57,7 +58,7 @@ input_exanded_tbl = inputs %>%
     
            # update output_dir_path inside template to include R0 at the end
            #r0_conv <- r0_period_to_hypen(r0)
-           tpl$output_dir_path = paste0(tpl$output_dir_path, "_R0-", r0)
+           tpl$output_dir_path = paste0(fpre, "/", tpl$output_dir_path, "_R0-", r0)
     
            # write to new file name
            write_json(tpl, fout, auto_unbox = TRUE, pretty = TRUE)

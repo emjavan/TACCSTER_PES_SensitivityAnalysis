@@ -1,5 +1,5 @@
 {
-  "output_dir_path": "seatird-deterministic_Network-1-Node_POP-100K_R0-3.1",
+  "output_dir_path": "Network_1_Node/seatird-deterministic_POP-100K_R0-3.1",
   "number_of_realizations": "10",
   "data": {
     "population": "../data/Network_1_Node/county_age_matrix_100K.csv",

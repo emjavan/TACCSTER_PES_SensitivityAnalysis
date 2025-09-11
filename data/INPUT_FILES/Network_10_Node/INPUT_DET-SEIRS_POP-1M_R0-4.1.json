@@ -1,5 +1,5 @@
 {
-  "output_dir_path": "seirs-deterministic_Network-10-Node_POP-1M_R0-4.1",
+  "output_dir_path": "Network_10_Node/seirs-deterministic_POP-1M_R0-4.1",
   "number_of_realizations": "10",
   "data": {
     "population": "../data/Network_10_Node/county_age_matrix_1M.csv",
