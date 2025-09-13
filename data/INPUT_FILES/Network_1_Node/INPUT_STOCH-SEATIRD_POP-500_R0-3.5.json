@@ -1,6 +1,6 @@
 {
   "output_dir_path": "Network_1_Node/seatird-stochastic_POP-500_R0-3.5",
-  "number_of_realizations": "10",
+  "number_of_realizations": "10000",
   "data": {
     "population": "../data/Network_1_Node/county_age_matrix_500.csv",
     "contact": "../data/Network_1_Node/contact_matrix.csv",

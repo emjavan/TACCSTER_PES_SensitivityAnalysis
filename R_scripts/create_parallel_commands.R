@@ -17,6 +17,7 @@ r0_period_to_hypen <- function(R0) str_replace(formatC(R0, format = "f", digits 
 
 # R0 options to test
 R0_grid = seq(0.5, 4.1, by = 0.2) # 19, R0=3 template not in set
+rel_num = 10000
  
 # Find the base files
 input_dir_path   = "../data/INPUT_FILE_TEMPLATES"      # where files are written (FS path from here)
@@ -40,24 +41,27 @@ inputs = expand_grid(input_file_template = base_files, R0 = R0_grid) %>%
   rowwise() %>%
   mutate(output_file_path = paste0(out_dir_prefix, "/", network_size, "/", filename_only),
          r0_hyphen        = r0_period_to_hypen(R0),
-         output_file_path = str_replace(output_file_path, "3", as.character(R0))
+         output_file_path = str_replace(output_file_path, "3", as.character(R0)),
+         rel_num = rel_num
          ) %>%
   ungroup() %>%
-  dplyr::select(input_file_template, network_size, R0, output_file_path)
+  dplyr::select(input_file_template, network_size, rel_num, R0, output_file_path)
   
 input_exanded_tbl = inputs %>%
   rename(fin  = input_file_template,
          fpre = network_size,
          r0   = R0,
          fout = output_file_path) %>%
-  pmap_chr(function(fin, fpre, r0, fout) {
-           tpl <- read_json(fin, simplifyVector = TRUE)
+  pmap_chr(function(fin, fpre, rel_num, r0, fout) {
+           tpl = read_json(fin, simplifyVector = TRUE)
+           
+           tpl$number_of_realizations = as.character(rel_num)
            
            # change R0 inside the template
-           tpl$disease_model$parameters$R0 <- as.character(r0)
+           tpl$disease_model$parameters$R0 = as.character(r0)
     
            # update output_dir_path inside template to include R0 at the end
-           #r0_conv <- r0_period_to_hypen(r0)
+           #r0_conv = r0_period_to_hypen(r0)
            tpl$output_dir_path = paste0(fpre, "/", tpl$output_dir_path, "_R0-", r0)
     
            # write to new file name
@@ -70,7 +74,7 @@ input_exanded_tbl = inputs %>%
 commands_script = input_exanded_tbl %>%
   as_tibble() %>%
   rename(out_file = value) %>%
-  mutate(poetry_command_start = "poetry run python3 ../src/simulator.py -l INFO -d 500 -i ") %>%
+  mutate(poetry_command_start = "poetry run python3 ../src/simulator.py -l INFO -d 500 -i") %>%
   rowwise() %>%
   mutate(final_poetry_command = paste(poetry_command_start, out_file)) %>%
   ungroup() %>%
