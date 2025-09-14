@@ -1,4 +1,5 @@
 OUTPUT.json
+R0_sensitivity_analysis/Network_*_Node/
 .python-version
 .pytest_cache
 __pycache__/
