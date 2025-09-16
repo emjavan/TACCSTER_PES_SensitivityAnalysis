@@ -166,8 +166,8 @@ def main():
     travel_parent = TravelModel(parameters)
     travel_model  = travel_parent.get_child(simulation_properties.travel_model)
 
-    # prepare list to store results
-    timing_results = []
+    # Run time output file
+    csv_time_path = Path(simulation_properties.output_dir_path) / "simulation_times.csv"
     for r in range(realization_number):
         start_time = time.perf_counter()
         # Initialize Days class instance, resets snapshot
@@ -190,16 +190,15 @@ def main():
            )
         # capture elapsed time
         elapsed = time.perf_counter() - start_time
-        timing_results.append({"sim_num": r, "time_seconds": elapsed})
 
-    csv_time_path = Path(simulation_properties.output_dir_path) / "simulation_times.csv"
-    with open(csv_time_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["sim_num", "time_seconds"])
-        writer.writeheader()
-        writer.writerows(timing_results)
-
-    logger.info(f"Wrote simulation timing results to {csv_time_path}")
-
+        # Write a time results as soon as sim completes to handle unfinished jobs
+        with open(csv_time_path, "a", newline="") as f:
+            fieldnames = ["sim_num", "time_seconds"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            # write header if file is empty
+            if f.tell() == 0:
+                writer.writeheader()
+            writer.writerow({"sim_num": r, "time_seconds": elapsed})
     return
 
 
