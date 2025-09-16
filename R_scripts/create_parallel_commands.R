@@ -17,7 +17,7 @@ r0_period_to_hypen <- function(R0) str_replace(formatC(R0, format = "f", digits 
 
 # R0 options to test
 R0_grid = seq(0.5, 4.1, by = 0.2) # 19, R0=3 template not in set
-rel_num = 10000
+rel_num = 1000
  
 # Find the base files
 input_dir_path   = "../data/INPUT_FILE_TEMPLATES"      # where files are written (FS path from here)
