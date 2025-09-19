@@ -48,6 +48,20 @@ parse_path_meta = function(path) {
 
 
 # 1) Find sims + parse path metadata
+parse_one = function(simdir) {
+  parent_dir  = basename(dirname(simdir))                    # e.g. "seatird-deterministic_POP-1M_R0-0.7"
+  network_dir = basename(dirname(dirname(simdir)))           # e.g. "Network_1_Node"
+  tibble(
+    simdir       = simdir,
+    NetworkSize  = as.integer(str_match(network_dir, "(?<=Network_)([0-9]+)(?=_Node)")[,2]),
+    model        = sub("_.*$", "", parent_dir),
+    POP          = str_match(parent_dir, "(?<=_POP-)([^_]+)")[,2],
+    R0           = as.numeric(str_match(parent_dir, "(?<=_R0-)([0-9.]+)")[,2]),
+    sim_id       = as.integer(str_match(basename(simdir), "(?<=output_sim)([0-9]+)")[,2])
+  )
+}
+
+# Not used as it's too slow
 list_simulations = function(root_dir, pop_filter = NULL) {
   sim_dirs = fs::dir_ls(
     root_dir, recurse = TRUE, type = "directory",
@@ -56,19 +70,6 @@ list_simulations = function(root_dir, pop_filter = NULL) {
   if (!is.null(pop_filter)) {
     pat = paste0("_POP-(", paste(pop_filter, collapse = "|"), ")_")
     sim_dirs = stringr::str_subset(sim_dirs, pat)
-  }
-  
-  parse_one = function(simdir) {
-    parent_dir  = basename(dirname(simdir))                    # e.g. "seatird-deterministic_POP-1M_R0-0.7"
-    network_dir = basename(dirname(dirname(simdir)))           # e.g. "Network_1_Node"
-    tibble(
-      simdir       = simdir,
-      NetworkSize  = as.integer(str_match(network_dir, "(?<=Network_)([0-9]+)(?=_Node)")[,2]),
-      model        = sub("_.*$", "", parent_dir),
-      POP          = str_match(parent_dir, "(?<=_POP-)([^_]+)")[,2],
-      R0           = as.numeric(str_match(parent_dir, "(?<=_R0-)([0-9.]+)")[,2]),
-      sim_id       = as.integer(str_match(basename(simdir), "(?<=output_sim)([0-9]+)")[,2])
-    )
   }
   
   bind_rows(lapply(sim_dirs, parse_one))
@@ -228,10 +229,16 @@ bootstrap_group_kgrid <- function(
 }
 
 
-
-
-
-
+# Bootstrap
+run_bootstrap_pipeline = function(sim_summaries,
+                                  keys = c("model","POP","R0","NetworkSize"),
+                                  bootsrap_reps = 300, eps = 0.05, z = 1.96,
+                                  k_grid = NULL) {
+  sim_summaries %>%
+    group_by(across(all_of(keys))) %>%
+    group_split() %>%
+    map_dfr(~ bootstrap_group_kgrid(.x, keys = keys, k_grid = k_grid, bootsrap_reps = bootsrap_reps, eps = eps, z = z))
+}
 
 
 
