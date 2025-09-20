@@ -85,7 +85,7 @@ read_timeseries = function(simdir) {
   files = files[order(ord)]
   
   read_one = function(f) {
-    j = jsonlite::fromJSON(f, simplifyVector = TRUE)
+    j   = jsonlite::fromJSON(f, simplifyVector = TRUE)
     day = as.integer(str_match(basename(f), "(?<=output_)([0-9]+)")[,2])
     if (is.null(j$total_summary)) stop("Missing total_summary in: ", f)
     row = as.data.frame(as.list(j$total_summary), stringsAsFactors = FALSE)
@@ -99,11 +99,21 @@ read_timeseries = function(simdir) {
 }
 
 # 3) Build wide peaks and keep nested ts
-summarize_all_sims = function(sim_index){
-  out = vector("list", nrow(sim_index))
-  for(i in seq_len(nrow(sim_index))){
-    meta = sim_index[i, ]
-    ts   = read_timeseries(meta$simdir)
+summarize_all_sims = function(sim_index, 
+                              network_size=250,
+                              input_dir_path="../R0_sensitivity_analysis/",
+                              batch_num = 1){
+  total_sims = nrow(sim_index)
+  out = vector("list", total_sims)
+  for(i in seq_len(total_sims)){
+    simdir = sim_index$simdir[i]
+    print(paste0("Sim ", i, " of ", total_sims, " started for ", simdir))
+    NetworkSize = sim_index$NetworkSize[i]
+    model       = sim_index$model[i]
+    POP         = sim_index$POP[i]
+    R0          = sim_index$R0[i]
+    sim_id      = sim_index$sim_id[i]
+    ts   = read_timeseries(simdir)
     if(is.null(ts) || nrow(ts) == 0) next
     total_days = as.integer(max(ts$day))
     comp_cols  = setdiff(names(ts), "day")
@@ -135,11 +145,23 @@ summarize_all_sims = function(sim_index){
     } # end loop over compartments
     
     out[[i]] = bind_cols(
-      meta,
+      setNames(as_tibble(simdir), "simdir"),
+      setNames(as_tibble(NetworkSize), "NetworkSize"),
+      setNames(as_tibble(model), "model"),
+      setNames(as_tibble(POP), "POP"),
+      setNames(as_tibble(R0), "R0"),
+      setNames(as_tibble(sim_id), "sim_id"),
       setNames(as_tibble(total_days), "total_days"),
       as_tibble(outcomes),
       tibble(ts = list(ts))   # keep full time series nested
     )
+    
+    saveRDS(
+      bind_rows(out),
+      paste0(input_dir_path, "summarised_sims_Network_", network_size, "_Nodes_batch-", batch_num, ".rds"),
+      compress = "gzip"
+    )
+    
   }
   bind_rows(out)
 }
