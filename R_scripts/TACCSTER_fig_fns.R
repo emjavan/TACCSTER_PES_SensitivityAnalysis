@@ -158,7 +158,7 @@ summarize_all_sims = function(sim_index,
     
     saveRDS(
       bind_rows(out),
-      paste0(input_dir_path, "summarised_sims_Network_", network_size, "_Nodes_batch-", batch_num, ".rds"),
+      paste0(input_dir_path, "summarised_sims/summarised_sims_Network_", network_size, "_Nodes_batch-", batch_num, ".rds"),
       compress = "gzip"
     )
     
