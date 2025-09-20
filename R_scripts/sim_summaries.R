@@ -12,7 +12,7 @@ batch_num    = as.integer(args[[2]])
 start        = as.integer(args[[3]])
 end          = as.integer(args[[4]])
 
-sims = read_csv(paste0(input_dir_path, "parsed_file_paths_Network_", network_size, "_Nodes.csv"))
+sims = read_csv(paste0(input_dir_path, "sim_output_paths_Network_", network_size, "_Nodes-seatird-r01-sim0_99.csv"))
 sim_sub = sims %>%
   slice(start:end)
 
