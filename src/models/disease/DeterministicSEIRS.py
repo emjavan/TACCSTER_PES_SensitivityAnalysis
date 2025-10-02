@@ -60,7 +60,7 @@ class DeterministicSEIRS(DiseaseModel):
                 "relative_susceptibility", [1.0] * num_age_grps
             )]
 
-        # this isn't used, bc _calculate_beta_w_npi uses the schedule
+        # this isn't used in this file, but _calculate_beta_w_npi inherits from this init
         self.npis_schedule = disease_model.npis_schedule
 
         logger.info(f'instantiated DeterministicSEATIRD object')
