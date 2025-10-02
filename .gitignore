@@ -1,5 +1,8 @@
 OUTPUT.json
 R0_sensitivity_analysis/Network_*_Node/
+R0_sensitivity_analysis/summarised_sims*/
+US_States/
+R_scripts/.RData*
 .python-version
 .pytest_cache
 __pycache__/
