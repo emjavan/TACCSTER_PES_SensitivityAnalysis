@@ -1,7 +1,8 @@
 OUTPUT.json
 R0_sensitivity_analysis/Network_*_Node/
 R0_sensitivity_analysis/summarised_sims*/
-US_States/
+US_States/*/ # Ignore all subdirectories under US_States
+!US_States/* # But keep any files inside US_States
 R_scripts/.RData*
 .python-version
 .pytest_cache
