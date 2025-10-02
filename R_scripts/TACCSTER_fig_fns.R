@@ -103,6 +103,7 @@ summarize_all_sims = function(sim_index,
                               network_size=250,
                               input_dir_path="../R0_sensitivity_analysis/",
                               batch_num = 1){
+  
   total_sims = nrow(sim_index)
   out = vector("list", total_sims)
   for(i in seq_len(total_sims)){
@@ -182,21 +183,30 @@ full_sample_ref <- function(df_grp, metrics) {
 }
 
 # One bootstrap draw for one group
-boot_once <- function(df_grp, metrics, k, eps = 0.05, z = 1.96) {
+boot_once <- function(df_grp, metrics = metric_cols(df_grp), k=10, eps = 0.05, z = 1.96) {
   stopifnot(nrow(df_grp) >= 1)
   k <- min(k, nrow(df_grp))                      # clamp to available
   samp <- df_grp %>% slice_sample(n = k, replace = TRUE)
   
   stats <- tibble(metric = metrics) %>%
     mutate(
-      mean   = map_dbl(metric, ~ mean(samp[[.x]], na.rm = TRUE)),
-      median = map_dbl(metric, ~ median(samp[[.x]], na.rm = TRUE)),
-      sd     = map_dbl(metric, ~ sd(samp[[.x]], na.rm = TRUE)),
-      q05    = map_dbl(metric, ~ quantile(samp[[.x]], 0.05, na.rm = TRUE, type = 7)),
-      q25    = map_dbl(metric, ~ quantile(samp[[.x]], 0.25, na.rm = TRUE, type = 7)),
-      q75    = map_dbl(metric, ~ quantile(samp[[.x]], 0.75, na.rm = TRUE, type = 7)),
-      q95    = map_dbl(metric, ~ quantile(samp[[.x]], 0.95, na.rm = TRUE, type = 7)),
-      n_est  = (z * sd / (eps * abs(pmax(mean, .Machine$double.eps))))^2
+      # raw (unrounded) stats first
+      mean_raw = map_dbl(metric, ~ mean(samp[[.x]], na.rm = TRUE)),
+      sd_raw   = map_dbl(metric, ~ sd(samp[[.x]], na.rm = TRUE)),
+      n_non_na = map_int(metric, ~ sum(!is.na(samp[[.x]]))),
+      
+      # rounded display stats
+      mean   = round(mean_raw, 2),
+      median = round(map_dbl(metric, ~ median(samp[[.x]], na.rm = TRUE)), 2),
+      sd     = round(sd_raw, 2),
+      se     = round(if_else(n_non_na > 0, sd_raw / sqrt(n_non_na), NA_real_), 2),
+      q05    = round(map_dbl(metric, ~ quantile(samp[[.x]], 0.05, na.rm = TRUE, type = 7)), 2),
+      q25    = round(map_dbl(metric, ~ quantile(samp[[.x]], 0.25, na.rm = TRUE, type = 7)), 2),
+      q75    = round(map_dbl(metric, ~ quantile(samp[[.x]], 0.75, na.rm = TRUE, type = 7)), 2),
+      q95    = round(map_dbl(metric, ~ quantile(samp[[.x]], 0.95, na.rm = TRUE, type = 7)), 2),
+      n_est  = if_else(
+        sd == 0, 1L, ceiling(((z * sd) / (eps * mean) )^2)
+      )
     )
   stats
 }

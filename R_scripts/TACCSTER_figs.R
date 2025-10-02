@@ -10,292 +10,164 @@
 #'    Really focused on how many sims to stabilize vs predicted 
 #'    
 
+#### SOURCE ####
 library(jsonlite)
 library(tidyverse)
-
-
-# Helper: parse model metadata from the path
-parse_path_meta = function(path) {
-  parent_dir      = basename(dirname(path))                 # e.g., seirs-deterministic_POP-500_R0-3.3
-  network_dir     = basename(dirname(dirname(path)))        # e.g., Network_10_Node
-  network_size    = stringr::str_match(network_dir, "(?<=Network_)([0-9]+)(?=_Node)")[,2] %>% as.integer()
-  
-  tibble(
-    parent_dir   = parent_dir,
-    model        = str_remove(parent_dir, "_.*$"),
-    POP          = str_match(parent_dir, "(?<=_POP-)([0-9A-Za-z]+)")[,2],
-    R0           = str_match(parent_dir, "(?<=_R0-)([0-9.]+)")[,2] %>% as.numeric(),
-    NetworkDir   = network_dir,
-    NetworkSize  = network_size
-  ) %>%
-    mutate(
-      # Keep your preferred orderings
-      model = factor(
-        model,
-        levels = c("seir-deterministic", "seirs-deterministic", 
-                   "seatird-deterministic", "seatird-stochastic")),
-      POP = factor(POP, levels = c("500", "100K", "1M")),
-      # Nice label for faceting (e.g., "N=1", "N=10", etc.)
-      NetworkLabel = factor(paste0("Nodes: ", NetworkSize),
-                            levels = paste0("Nodes: ", sort(unique(NetworkSize))))
-    )
-} # end parse_path_meta fn
+library(gt)
+options(scipen = 999) # disable scientific notation
+source("TACCSTER_fig_fns.R")
 
 #//////////////
 #### FIG 1 ####
-# Summarize one file
-read_time_stats = function(csv_path) {
-  df = readr::read_csv(csv_path, show_col_types = FALSE)
-  x = df[["time_seconds"]]
-  meta = parse_path_meta(csv_path)
-  tibble(
-    file        = csv_path,
-    n           = length(x),
-    mean_sec    = mean(x),
-    median_sec  = median(x),
-    sd_sec      = sd(x),
-    q05_sec     = quantile(x, 0.05, names = FALSE, type = 7),
-    q25_sec     = quantile(x, 0.25, names = FALSE, type = 7),
-    q75_sec     = quantile(x, 0.75, names = FALSE, type = 7),
-    q95_sec     = quantile(x, 0.95, names = FALSE, type = 7)
-  ) %>%
-    bind_cols(meta)
+# list.dirs too slow used bash instead
+# ls Network_*_Node/*/simulation_times.csv >> sim_time_paths.csv
+
+input_dir_path = "../R0_sensitivity_analysis/"
+output_file = paste0(input_dir_path, "sim_time_summaries.csv")
+if(!file.exists(output_file)){
+  time_file_paths = read_csv(paste0(input_dir_path, "sim_time_paths.csv"), col_names = F) %>%
+    mutate(X1 = paste0(input_dir_path, X1))
+  
+  # Apply to all files
+  time_summaries = purrr::map_dfr(time_file_paths$X1, read_time_stats)
+  write.csv(time_summaries,
+            output_file,
+            row.names = F
+  )
+}else{
+  time_summaries = read_csv(output_file) %>%
+    mutate(POP = factor(POP, levels=c("500", "100K", "1M")),
+           NetworkLabel = factor( NetworkLabel, levels=c("Nodes: 1", "Nodes: 2", "Nodes: 10", 
+                                                         "Nodes: 100", "Nodes: 250")),
+           mean_min = round(mean_sec/60, 0),
+           sd_min = sd_sec/60,
+           model = toupper(model),
+           model = factor(model, levels=c("SEIR-DETERMINISTIC", "SEIRS-DETERMINISTIC",
+                                          "SEATIRD-DETERMINISTIC", "SEATIRD-STOCHASTIC"),
+                          labels = c("SEIR-Fixed", "SEIRS-Fixed", "SEATIRD-Fixed", "SEATIRD-Random"))
+           )
 }
 
-input_dir_path  = "../R0_sensitivity_analysis"  
-# Find every simulation_times.csv under any Network_*_Node
-time_file_paths = list.files(
-  path       = input_dir_path,
-  pattern    = "simulation_times\\.csv$",
-  full.names = TRUE,
-  recursive  = TRUE
-)
-
-# Apply to all files
-time_summaries = purrr::map_dfr(time_file_paths, read_time_stats)
-
-# pal <- nationalparkcolors::park_palette("Everglades")
-runtime_plot = 
-  ggplot(time_summaries, aes(x = R0, y = median_sec, color = POP, group = POP)) +
-  geom_line(alpha=0.7, size = 1) +
+# color hex codes come from
+# pal = nationalparkcolors::park_palette("Everglades")
+runtime_plot =
+  ggplot(time_summaries, aes(x = R0, y = mean_min, color = POP, group = POP)) +
+  geom_ribbon(aes(ymin = mean_min - sd_min, ymax = mean_min + sd_min, fill = POP), alpha = 0.3) +
+  geom_line(alpha = 0.7, size = 1) +
   geom_point(size = 2) +
-  # geom_errorbar(
-  #   aes(ymin = q25_sec, ymax = q95_sec),
-  #   alpha=0.7,
-  #   width = 0.05,                # horizontal bar width
-  #   linewidth = 0.5,            # thickness of the bar
-  #   position = position_dodge(width = 0) # avoid nudging
-  # ) +
-  facet_grid(model ~ NetworkLabel, scales = "free_y") +
-  theme_bw() +
-  labs(x = "R0", y = "Median Runtimes (s)", color = "Population") +
-  scale_color_manual(values = c("500" = "#EAAE37", "100K" = "#9A8146", "1M" = "#565F41"))
+  facet_grid(
+    NetworkLabel ~ model,
+    scales   = "free_y",
+    labeller = labeller(
+      NetworkLabel = label_wrap_gen(width = 20),
+      model        = label_wrap_gen(width = 25)
+    )
+  ) +
+  theme_bw(base_size = 30) +
+  labs(x = "R0", y = "Mean \u00B1 SD Run Time (minutes)", color = "Population", fill = "Population") +
+  scale_color_manual(values = c("500"="#EAAE37","100K"="#9A8146","1M"="#565F41")) +
+  scale_fill_manual(values = c("500"="#EAAE37","100K"="#9A8146","1M"="#565F41")) +
+  theme(
+    strip.text.x = element_text(size = rel(0.9), lineheight = 0.95, margin = margin(3,6,3,6)),
+    strip.text.y = element_text(size = rel(0.9), lineheight = 0.95, margin = margin(6,3,6,3)),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    legend.position = "bottom" #,
+    #plot.margin = margin(10, 14, 10, 14) 
+  )
+
+
+ggsave(filename = paste0(input_dir_path, "figs/runtime_mean.png"),
+       plot = runtime_plot, 
+       bg="white", width=14, height=12, units="in", dpi=1600
+       )
 
 
 #//////////////
 #### FIG 2 ####
 
-# 1) Find sims + parse path metadata
-list_simulations = function(root_dir, pop_filter = NULL) {
-  sim_dirs = fs::dir_ls(
-    root_dir, recurse = TRUE, type = "directory",
-    regexp = "Network_[0-9]+_Node/.+?/output_sim[0-9]+$"
-  )
-  if (!is.null(pop_filter)) {
-    pat = paste0("_POP-(", paste(pop_filter, collapse = "|"), ")_")
-    sim_dirs = stringr::str_subset(sim_dirs, pat)
-  }
-  
-  parse_one = function(simdir) {
-    parent_dir  = basename(dirname(simdir))                    # e.g. "seatird-deterministic_POP-1M_R0-0.7"
-    network_dir = basename(dirname(dirname(simdir)))           # e.g. "Network_1_Node"
-    tibble(
-      simdir       = simdir,
-      NetworkSize  = as.integer(str_match(network_dir, "(?<=Network_)([0-9]+)(?=_Node)")[,2]),
-      model        = sub("_.*$", "", parent_dir),
-      POP          = str_match(parent_dir, "(?<=_POP-)([^_]+)")[,2],
-      R0           = as.numeric(str_match(parent_dir, "(?<=_R0-)([0-9.]+)")[,2]),
-      sim_id       = as.integer(str_match(basename(simdir), "(?<=output_sim)([0-9]+)")[,2])
-    )
-  }
-  
-  bind_rows(lapply(sim_dirs, parse_one))
-}
 
-# 2) Read one simulation's time series
-read_timeseries = function(simdir) {
-  files = fs::dir_ls(simdir, type = "file", regexp = "output_[0-9]+\\.json$")
-  if (length(files) == 0) return(NULL)
-  
-  # sort by numeric day from filename
-  ord   = as.integer(str_match(basename(files), "(?<=output_)([0-9]+)")[,2])
-  files = files[order(ord)]
-  
-  read_one = function(f) {
-    j = jsonlite::fromJSON(f, simplifyVector = TRUE)
-    day = as.integer(str_match(basename(f), "(?<=output_)([0-9]+)")[,2])
-    if (is.null(j$total_summary)) stop("Missing total_summary in: ", f)
-    row = as.data.frame(as.list(j$total_summary), stringsAsFactors = FALSE)
-    for (nm in names(row)) row[[nm]] = suppressWarnings(as.numeric(row[[nm]]))
-    row$day = day
-    row[, c("day", setdiff(names(row), "day")), drop = FALSE]
-  }
-  
-  ts = bind_rows(lapply(files, read_one))
-  ts[order(ts$day), , drop = FALSE] %>% as_tibble()
-}
+#//////////////////
+#### Sim Paths ####
+input_dir_path = "../R0_sensitivity_analysis/"
+network_size = 1
+sim_dir_path = paste0(input_dir_path, "sim_output_paths_Network_", network_size, "_Nodes_sub100.csv")
+sim_file_paths = read_csv(sim_dir_path, col_names = FALSE, show_col_types = FALSE) %>%
+  pull(X1) %>%
+  paste0(input_dir_path, .)
+sim_file_paths_parse = parse_one(sim_file_paths)
+write.csv(sim_file_paths_parse,
+          paste0(input_dir_path, "parsed_file_paths_Network_", network_size, "_Nodes.csv"),
+          row.names = F)
 
-# 3) Build wide peaks and keep nested ts
-summarize_all_sims = function(sim_index){
-  out = vector("list", nrow(sim_index))
-  for(i in seq_len(nrow(sim_index))){
-    meta = sim_index[i, ]
-    ts   = read_timeseries(meta$simdir)
-    if(is.null(ts) || nrow(ts) == 0) next
-    total_days = as.integer(max(ts$day))
-    comp_cols  = setdiff(names(ts), "day")
-    # ensure numeric
-    for(nm in comp_cols) ts[[nm]] = suppressWarnings(as.numeric(ts[[nm]]))
-    
-    # compute peak value and first day of peak for EACH compartment
-    outcomes = list()
-    for(comp in comp_cols){
-      series = ts[[comp]]
-      if (all(is.na(series))) {
-        outcomes[[paste0(comp, "_max_value")]] = NA_real_
-        outcomes[[paste0(comp, "_max_day")]]   = NA_integer_
-        outcomes[[paste0(comp, "_min_value")]] = NA_real_
-        outcomes[[paste0(comp, "_min_day")]]   = NA_integer_
-      } else {
-        # max value
-        max_val = max(series, na.rm = TRUE)
-        idx_mx  = which(series == max_val)[1]
-        outcomes[[paste0(comp, "_max_value")]] = as.numeric(max_val)
-        outcomes[[paste0(comp, "_max_day")]]   = as.integer(ts$day[idx_mx])
-        
-        # min value
-        min_val = min(series, na.rm = TRUE)
-        idx_mn  = which(series == min_val)[1]
-        outcomes[[paste0(comp, "_min_value")]] = as.numeric(min_val)
-        outcomes[[paste0(comp, "_min_day")]]   = as.integer(ts$day[idx_mn])
-      }
-    } # end loop over compartments
-    
-    out[[i]] = bind_cols(
-      meta,
-      setNames(as_tibble(total_days), "total_days"),
-      as_tibble(outcomes),
-      tibble(ts = list(ts))   # keep full time series nested
-    )
-  }
-  bind_rows(out)
-}
 
-#//////////////////////////
-#### Get Sim Summaries ####
-sims <- list_simulations("../R0_sensitivity_analysis", pop_filter = "1M")   # or NULL for all POPs
-sim_summaries <- summarize_all_sims(sims)
+#//////////////////////
+#### Sim Summaries ####
+rds_files = list.files(path="../R0_sensitivity_analysis/summarised_sims/", 
+                       pattern = ".rds$", full.names=T)
+sim_summaries = map_dfr(rds_files, readRDS)
+complete_sims = sim_summaries %>% # 2908
+  mutate(finished_sims = ifelse((E_min_value>1 & E_min_day<500), F, T)) %>%
+  dplyr::filter(finished_sims) # 2707
+
+keys = c("model", "POP", "R0", "NetworkSize")
+grpd = complete_sims %>%
+  group_by(across(all_of(keys))) %>%        # <- dynamic grouping with keys
+  group_modify(~ boot_once(.x, k=100)) %>%  # <- run once per group, returns rows
+  ungroup() %>%
+  dplyr::filter(metric %in% c("S_min_value", "E_max_value", "A_max_value", "T_max_value",
+                              "I_max_value", "R_max_value", "D_max_value"))
+
+
+
+net_size = 100; R0_choice=4.1
+not_matched_examp = sim_summaries %>%
+  dplyr::filter(NetworkSize==net_size) %>%
+  dplyr::filter(R0==R0_choice) %>% # 1.1 is the mostly not matched example
+  unnest(ts) %>%
+  dplyr::select(model, sim_id, day, S, E, R, D) %>%
+  gather("compartments", "people", -model, -sim_id, -day) %>%
+  mutate(compartments = factor(compartments, level=c("S", "E", "R", "D"), 
+                               labels = c("Susceptible", "Exposed", "Recovered", "Deceased") ),
+         model=toupper(model),
+         model = factor(model, levels=c("SEIR-DETERMINISTIC", "SEIRS-DETERMINISTIC",
+                                        "SEATIRD-DETERMINISTIC", "SEATIRD-STOCHASTIC"),
+                        labels = c("SEIR-Fixed", "SEIRS-Fixed", "SEATIRD-Fixed", "SEATIRD-Random"))
+         )
+
+comp_compare = ggplot(not_matched_examp, aes(x=day, y=people, group=interaction(model, sim_id), color=model))+
+  geom_line(alpha=0.5)+
+  facet_wrap(~compartments, nrow=2, scales="free_y")+
+  scale_color_manual(values = c("SEATIRD-Fixed"="#EAAE37", "SEATIRD-Random"="#565F41"))+
+  guides(color = guide_legend(override.aes = list(alpha = 1))) + 
+  labs(x="Simulation Day", y="Population", 
+       title=paste0(net_size, " Node Network, ", " R0=", R0_choice))+
+  theme_bw(base_size=25)+ 
+  theme(legend.position = "bottom")
+
+ggsave(filename = paste0(input_dir_path, "figs/compartment_ts_plot_Net", net_size, "R0-", R0_choice, ".png"),
+       plot = comp_compare, 
+       bg="white", width=10, height=8, units="in", dpi=1600
+)
+
+plotly::ggplotly(comp_compare)
+
 
 # Example: unnest one sim to inspect
-ex_ts <- sim_summaries$ts[[1]]
-
-#///////////////////////////////
-#### Bootstrap Outcome Vars ####
-metric_cols <- function(df) {
-  # any column ending in "_value" (e.g., S_peak_value, R_final_value, etc.)
-  grep("_value$", names(df), value = TRUE)
-}
-
-full_sample_ref <- function(df_grp, metrics) {
-  # “truth” within a group (mean over all sims in the group)
-  df_grp %>%
-    summarise(across(all_of(metrics), ~ mean(.x, na.rm = TRUE), .names = "{.col}")) %>%
-    tidyr::pivot_longer(everything(), names_to = "metric", values_to = "ref_mean")
-}
-
-# One bootstrap draw for one group
-boot_once <- function(df_grp, metrics, k, eps = 0.05, z = 1.96) {
-  stopifnot(nrow(df_grp) >= 1)
-  k <- min(k, nrow(df_grp))                      # clamp to available
-  samp <- df_grp %>% slice_sample(n = k, replace = TRUE)
-  
-  stats <- tibble(metric = metrics) %>%
-    mutate(
-      mean   = map_dbl(metric, ~ mean(samp[[.x]], na.rm = TRUE)),
-      median = map_dbl(metric, ~ median(samp[[.x]], na.rm = TRUE)),
-      sd     = map_dbl(metric, ~ sd(samp[[.x]], na.rm = TRUE)),
-      q05    = map_dbl(metric, ~ quantile(samp[[.x]], 0.05, na.rm = TRUE, type = 7)),
-      q25    = map_dbl(metric, ~ quantile(samp[[.x]], 0.25, na.rm = TRUE, type = 7)),
-      q75    = map_dbl(metric, ~ quantile(samp[[.x]], 0.75, na.rm = TRUE, type = 7)),
-      q95    = map_dbl(metric, ~ quantile(samp[[.x]], 0.95, na.rm = TRUE, type = 7)),
-      n_est  = (z * sd / (eps * abs(pmax(mean, .Machine$double.eps))))^2
-    )
-  stats
-}
-
-bootstrap_group_kgrid <- function(
-    df_grp,
-    keys          = c("model", "POP", "R0", "NetworkSize"),
-    k_grid        = NULL,
-    bootsrap_reps = 300,
-    eps           = 0.05, # eps and z are dependent
-    z             = 1.96) {
-  n_avail = nrow(df_grp)
-  mets    = metric_cols(df_grp)
-  if (length(mets) == 0) stop("No *_value metrics found.")
-  
-  # Default k grid (monotone, within available)
-  if (is.null(k_grid)) {
-    k_grid = unique(pmin(c(5, 10, 20, 50, 100, 200, 500, n_avail), n_avail))
-  }
-  
-  ref_tbl = full_sample_ref(df_grp, mets)  # empirical “truth” for stabilization
-  
-  map_dfr(k_grid, function(k) {
-    reps = map_dfr(seq_len(bootsrap_reps), ~ boot_once(df_grp, mets, k, eps, z)) %>%
-      mutate(k = k)
-    
-    # summarize bootstrap distribution per metric
-    out = reps %>%
-      group_by(metric, k) %>%
-      summarise(
-        n_avail      = n_avail,
-        bootsrap_reps= dplyr::n(),
-        mean_mean    = mean(mean, na.rm = TRUE),
-        med_mean     = median(mean, na.rm = TRUE),
-        sd_mean      = sd(mean, na.rm = TRUE),
-        q05_mean     = quantile(mean, 0.05, na.rm = TRUE, type = 7),
-        q95_mean     = quantile(mean, 0.95, na.rm = TRUE, type = 7),
-        med_sd       = median(sd, na.rm = TRUE),
-        med_n_est    = median(n_est, na.rm = TRUE),
-        .groups      = "drop"
-      ) %>%
-      left_join(ref_tbl, by = "metric") %>%
-      mutate(
-        rel_err_med = abs(med_mean - ref_mean) / (abs(ref_mean) + .Machine$double.eps),
-        rel_err_q95 = abs(q95_mean - ref_mean) / (abs(ref_mean) + .Machine$double.eps),
-        meets_eps   = rel_err_med <= eps
-      )
-    
-    # attach group keys once
-    bind_cols(as_tibble(df_grp[1, keys, drop = FALSE]), out)
-  })
-}
-
-run_bootstrap_pipeline <- function(sim_summaries,
-                                   keys = c("model","POP","R0","NetworkSize"),
-                                   bootsrap_reps = 300, eps = 0.05, z = 1.96,
-                                   k_grid = NULL) {
-  sim_summaries %>%
-    group_by(across(all_of(keys))) %>%
-    group_split() %>%
-    map_dfr(~ bootstrap_group_kgrid(.x, keys = keys, k_grid = k_grid, bootsrap_reps = bootsrap_reps, eps = eps, z = z))
-}
+ex_ts = sim_summaries$ts[[1]]
 
 
-keys      = c("model", "POP", "R0", "NetworkSize")
-boot_grid = run_bootstrap_pipeline(sim_summaries, keys = keys, bootsrap_reps = 500, k_grid = 2)
 
+
+
+
+#///////////////////////
+#### Bootstrap Sims ####
+# min of everything was 1, so not getting much useful details
+boot_grid = run_bootstrap_pipeline(complete_sims, keys = keys, bootsrap_reps = 100, k_grid = c(1, 5, 10)) %>%
+  # Metrics of interest min S and max the rest
+  dplyr::filter(metric %in% c("S_min_value", "E_max_value", "A_max_value", "T_max_value",
+                              "I_max_value", "R_max_value", "D_max_value"))
 # Find empirical stabilization: minimal k where relative error ≤ 5%
 stability <- boot_grid %>%
   group_by(across(all_of(c(keys,"metric")))) %>%
@@ -309,19 +181,101 @@ alignment <- boot_grid %>%
             .groups = "drop") %>%
   left_join(stability, by = c(keys,"metric"))
 
+
 # Plot stabilization curves (mean of means vs k)
 # all are POP = 1M
-ggplot(boot_grid, aes(k, mean_mean, color = metric)) + 
-  geom_line() +
-  facet_grid(model ~ R0 + NetworkSize, scales = "free_y") + 
+ggplot(boot_grid, aes(R0, mean_mean, color = metric, group=metric)) + 
+  geom_point() +
+  facet_grid(model ~ NetworkSize, scales = "free_y") + 
   theme_bw()
 
+#//////////////////////
+#### Summary Table ####
+# Keep only I, R, D rows
+# Bootstapping not useful because there is no little stochasticity
+df_filtered = grpd %>%
+  left_join(boot_grid,
+            by=c("model", "NetworkSize", "POP", "R0", "metric")) %>%
+  dplyr::filter(k==1) %>%
+  dplyr::filter(metric %in% c("I_max_value", "R_max_value", "D_max_value")) %>%
+  mutate(#delta = n_est_theoretical - k_empirical,
+         model = toupper(model),
+         model = factor(model, levels=c("SEATIRD-DETERMINISTIC", "SEATIRD-STOCHASTIC"),
+                        labels = c("Fixed", "Random"))
+         ) 
 
 
+# Graphical table with gt
+# Pivot wider so each metric has its own set of columns
+df_wide = df_filtered %>%
+  pivot_wider(
+    id_cols = c(model, R0, NetworkSize),
+    names_from = metric,
+    values_from = c(n_est, mean, sd) # k_empirical,
+  ) %>%
+  rename(
+    I_mean = mean_I_max_value,
+    I_sd = sd_I_max_value,
+    I_n_est = n_est_I_max_value,
+    #I_empirical = k_empirical_I_max_value,
+    R_mean = mean_R_max_value,
+    R_sd = sd_R_max_value,
+    R_n_est = n_est_R_max_value,
+    #R_empirical = k_empirical_R_max_value,
+    D_mean = mean_D_max_value,
+    D_sd = sd_D_max_value,
+    D_n_est = n_est_D_max_value,
+    #D_empirical = k_empirical_D_max_value
+  ) %>%
+  arrange(R0, NetworkSize, desc(model)) %>% # deterministic first, stochastic second
+  mutate(across(matches("(_mean|_sd)$"), ~ round(.x, 0)))
 
 
+# light grey in powerpoint "#D1D1D1"
+
+# Build graphical table
+empirical_compare_table = 
+  df_wide %>%
+  # Reorder columns before gt
+  dplyr::select(model, R0, NetworkSize,
+                I_mean, I_sd, I_n_est, #I_empirical,
+                R_mean, R_sd, R_n_est, #R_empirical,
+                D_mean, D_sd, D_n_est, #D_empirical
+         ) %>%
+  dplyr::filter(R0 %in% c(1.1, 4.1)) %>%
+  gt(groupname_col = "R0", rowname_col = "model") %>%
+  tab_spanner(label = "Max Infected",  columns = c(I_mean, I_sd, I_n_est)) %>%
+  tab_spanner(label = "Max Recovered", columns = c(R_mean, R_sd, R_n_est)) %>%
+  tab_spanner(label = "Max Deceased",  columns = c(D_mean, D_sd, D_n_est)) %>%
+  cols_label(
+    I_mean=md("$\\bar{x}$"), I_sd=md("$sd$"), I_n_est = html("Sim<sub>est</sub>"), #I_empirical = "Actual",
+    R_mean=md("$\\bar{x}$"), R_sd=md("$sd$"), R_n_est = html("Sim<sub>est</sub>"), #R_empirical = "Actual",
+    D_mean=md("$\\bar{x}$"), D_sd=md("$sd$"), D_n_est = html("Sim<sub>est</sub>"), #D_empirical = "Actual"
+    NetworkSize = "Nodes"
+  ) %>%
+  tab_style(
+    style = cell_text(align = "center"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  opt_row_striping() %>% # row_striping = TRUE, stripe_color = "#D1D1D1"
+  fmt_number(
+    columns = matches("(_mean|_sd)$"),
+    decimals = 0,        # number of decimal places
+    use_seps = TRUE       # add thousands separators
+  ) %>%
+  tab_options(
+    table.font.size = px(24)   # or "14pt"
+  )
 
 
+gtsave(
+  data = empirical_compare_table,
+  filename = paste0("empirical_compare_table_R0-", R0_choice, ".png"),
+  path = paste0(input_dir_path, "figs/"),
+  vwidth = 6000,   # pixel width
+  vheight = 3000,  # pixel height
+  expand = 5      # zoom factor, improves resolution
+)
 
 
 
