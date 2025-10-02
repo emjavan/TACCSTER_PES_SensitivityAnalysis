@@ -8,6 +8,8 @@ from typing import Type
 import time
 import csv
 from pathlib import Path
+from secrets import token_bytes
+from numpy.random import SeedSequence, default_rng
 
 from baseclasses.Day import Day
 from baseclasses.InputProperties import InputProperties
@@ -55,7 +57,7 @@ def run( simulation_days:Type[Day],
         vaccine_model.distribute_vaccines_to_population(node, day=0)
 
     # Write initial conditions
-    writer.write(0, network)
+    writer.write_csv(0, network) if writer.total_sims > 0 else writer.write_json(0, network)
     simulation_days.snapshot(network)
 
     # Iterate over each day, each node...
@@ -77,7 +79,7 @@ def run( simulation_days:Type[Day],
         travel_model.travel(network, disease_model, parameters, day, vaccine_model)
 
         # write output
-        writer.write(day, network)
+        writer.write_csv(day, network) if writer.total_sims > 0 else writer.write_json(day, network)
 
         # Early termination if no more infectious or soon to be people
         tolerance = 1e-1
@@ -92,7 +94,8 @@ def run( simulation_days:Type[Day],
                         f"{tolerance:.1e} on day {day}, ending simulation early.")
             break
 
-    simulation_days.plot(writer.output_dir)
+    if writer.total_sims == 1:
+        simulation_days.plot(writer.output_dir)
     logger.info('completed processes in the run function')
 
     return
@@ -166,6 +169,11 @@ def main():
     travel_parent = TravelModel(parameters)
     travel_model  = travel_parent.get_child(simulation_properties.travel_model)
 
+    # New random seed per realization num
+    base_seed = int.from_bytes(token_bytes(16), "little")  # 128-bit
+    parent_seedseq = SeedSequence(base_seed)
+    child_seedseq = parent_seedseq.spawn(realization_number)
+
     # Run time output file
     csv_time_path = Path(simulation_properties.output_dir_path) / "simulation_times.csv"
     for r in range(realization_number):
@@ -173,12 +181,15 @@ def main():
         # Initialize Days class instance, resets snapshot
         simulation_days = Day(args.days)
 
+        # Set the random number generator seed for this realization num
+        disease_model.set_seed(child_seedseq[r])
+
         # Need to pass original network each iteration
         network_copy = copy.deepcopy(network)
 
         # Initialize output writer
         writer = Writer(output_dir_path   = simulation_properties.output_dir_path,
-                        realization_index = r)
+                        realization_index = r, total_sims = realization_number)
         logger.info(f'Began Simulation {r}; {r+1} of {realization_number} ')
         run( simulation_days,
              parameters,
@@ -194,11 +205,11 @@ def main():
         # Write a time results as soon as sim completes to handle unfinished jobs
         with open(csv_time_path, "a", newline="") as f:
             fieldnames = ["sim_num", "time_seconds"]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            csv_writer = csv.DictWriter(f, fieldnames=fieldnames)
             # write header if file is empty
             if f.tell() == 0:
-                writer.writeheader()
-            writer.writerow({"sim_num": r, "time_seconds": elapsed})
+                csv_writer.writeheader()
+            csv_writer.writerow({"sim_num": r, "time_seconds": elapsed})
     return
 
 
