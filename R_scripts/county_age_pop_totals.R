@@ -36,17 +36,21 @@ county_age_pop = get_acs(geography="county", variables= acs_vars$acs_variable_co
   group_by(GEOID, age_group) %>% 
   summarize(pop = sum(estimate), .groups = "drop") %>%
   rename(fips=GEOID) %>%
+  left_join(county_lookup_df, by=c("fips"="COUNTY_FIPS"))
+
+county_age_pop_spread = county_age_pop %>%
   spread(age_group, pop) %>%
-  left_join(county_lookup_df, by=c("fips"="COUNTY_FIPS")) %>%
   dplyr::select(STATE_NAME, COUNTY_NAME, fips, `0-4`, `5-17`, `18-49`, `50-64`, `65+`) %>%
   drop_na() # drops na's for Puerto Rico
 
 #/////////////////////////////
 #### WRITE TO STATE FILES ####
-state_names = unique(county_age_pop$STATE_NAME) # length(state_names) = 51
+state_names = unique(county_age_pop_spread$STATE_NAME) # length(state_names) = 51
 for(state in state_names){
-  state_specific_df = county_age_pop %>%
-    dplyr::filter(STATE_NAME==state)
+  state_specific_df = county_age_pop_spread %>%
+    dplyr::filter(STATE_NAME==state) %>%
+    # first col expected to be "fips" in file
+    dplyr::select(-STATE_NAME, -COUNTY_NAME)
   
   state_name_hypen = str_replace_all(state, " ", "-")
   file_path = paste0("../data/", state_name_hypen, "/county_pop_by_age_", state_name_hypen, "_2019-2023ACS.csv")
@@ -59,27 +63,28 @@ for(state in state_names){
 
 #///////////////////////
 #### LARGEST COUNTY ####
-# Initially will infect 1% of most populous county that is LOW risk
+# Initially will infect 1 per 1M of most populous county that is LOW risk
 
 init_inf_file = "../data/all_US_initial_infected.csv"
 if(!file.exists(init_inf_file)){
   risk_ratios = read_csv("../data/all_US_high-risk-ratios-detailed.csv")
   init_inf_df = county_age_pop %>%
-    gather(age_group, POP_ACS, -STATE_NAME, -COUNTY_NAME, -fips) %>%
     left_join(risk_ratios, by=c("age_group", "STATE_NAME")) %>%
-    filter(age_group=="18-49") %>%
+    dplyr::filter(age_group=="18-49") %>%
     group_by(STATE_NAME) %>%
-    arrange(desc(POP_ACS)) %>%
+    arrange(desc(pop)) %>%
     slice(1) %>%
     ungroup() %>%
     rowwise() %>%
-    mutate(low_risk_POP = floor((1-frac_high_risk)*POP_ACS)) %>%
+    mutate(low_risk_POP = floor((1-frac_high_risk)*pop)) %>%
     ungroup() %>%
-    mutate(`init_inf_1percent_18-49`            = floor(0.01*low_risk_POP),
+    mutate(init_inf_per_1M                      = ceiling(low_risk_POP/1000000), # has to be at least 1 person even if <1M pop
+           `init_inf_1percent_18-49`            = floor(0.01*low_risk_POP),
            `init_inf_half-percent_18-49`        = floor(0.005*low_risk_POP),
            `init_inf_1percent_18-49_capped`     = ifelse(`init_inf_1percent_18-49`    >10000, 10000, `init_inf_1percent_18-49`),
            `init_inf_half-percent_18-49_capped` = ifelse(`init_inf_half-percent_18-49`>10000, 10000, `init_inf_half-percent_18-49`)
-    )
+    ) %>%
+    drop_na()
   
   write.csv(init_inf_df,
             init_inf_file,
