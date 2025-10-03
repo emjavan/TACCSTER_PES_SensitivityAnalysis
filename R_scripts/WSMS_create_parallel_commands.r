@@ -86,7 +86,8 @@ for(i in 1:total_states){
   state_template$initial_infected[[1]]$county   = single_state$fips
   state_template$initial_infected[[1]]$infected = single_state$init_inf_per_1M
   
-  write_json(state_template, single_state$BASE_OUTPUT_FILE_PATH, auto_unbox = TRUE, pretty = TRUE)
+  write_json(state_template, single_state$BASE_OUTPUT_FILE_PATH, 
+             auto_unbox = TRUE, pretty = TRUE, null = "null")
   print(paste0("wrote file to ", single_state$BASE_OUTPUT_FILE_PATH))
   
 } # end loop over states
@@ -110,7 +111,8 @@ for(i in 1:total_states){
   
   state_template$vaccine_model$parameters$vaccine_stockpile <- make_stockpile_json(state_vax_ts)
   
-  write_json(state_template, single_state$VAX_OUTPUT_FILE_PATH, auto_unbox = TRUE, pretty = TRUE)
+  write_json(state_template, single_state$VAX_OUTPUT_FILE_PATH, 
+             auto_unbox = TRUE, pretty = TRUE, null = "null")
   print(paste0("wrote file to ", single_state$VAX_OUTPUT_FILE_PATH))
   
 } # end loop over states
