@@ -105,7 +105,7 @@
         "1",
         "1"
       ],
-      "vaccine_half_life_days": {},
+      "vaccine_half_life_days": null,
       "vaccine_capacity_proportion": "1.0",
       "vaccine_adherence": [
         "1",
