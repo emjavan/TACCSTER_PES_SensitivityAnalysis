@@ -4,8 +4,10 @@
 library(jsonlite)
 library(tidyverse)
 
-# helper to replace "STATE" tokens in all strings
-replace_STATE_tokens <- function(x, state_dir) {
+#///////////////////
+#### HELPER FNS ####
+# Replace "STATE" tokens in all strings
+replace_STATE_tokens = function(x, state_dir) {
   # match STATE when not adjacent to letters/digits (underscore is OK)
   pat <- "(?<![A-Za-z0-9])STATE(?![A-Za-z0-9])"
   if (is.character(x)) {
@@ -15,13 +17,33 @@ replace_STATE_tokens <- function(x, state_dir) {
   } else x
 }
 
-# Find the base files
+# Turn a state's schedule into the vaccine_stockpile JSON list
+make_stockpile_json = function(state_df) {
+  state_df %>%
+    arrange(ReleaseDay) %>%
+    transmute(
+      day    = as.character(ReleaseDay),                  # keep as strings to match template
+      amount = as.character(round(TotalWeeklyNewFullProtect))
+    ) %>%
+    transpose()                                           # list of lists: list(list(day=..., amount=...), ...)
+}
+
+
+#//////////////////
+#### LOAD DATA ####
+# Get template paths
 input_dir_path   = "../data/INPUT_FILE_TEMPLATES"      # where files are written (FS path from here)
 base_file = list.files(path        = input_dir_path,
-                        pattern     = "^INPUT_STOCH-SEIHRD_STATE.*\\.json$",
-                        full.names  = TRUE, recursive  = TRUE
+                       pattern     = "^INPUT_STOCH-SEIHRD_STATE.*BASELINE\\.json$",
+                       full.names  = TRUE, recursive  = TRUE
 )
-template = jsonlite::fromJSON(base_file, simplifyVector = FALSE)
+vax_file = list.files(path        = input_dir_path,
+                      pattern     = "^INPUT_STOCH-SEIHRD_STATE.*VAX\\.json$",
+                      full.names  = TRUE, recursive  = TRUE
+)
+
+# Vaccines distributed to people who get 100% VE against infection
+state_weekly_vax_given = read_csv("../data/all_US_weekly_vax_distribution.csv")
 
 # Get total counties per state to determine num batches
 county_df = read_csv("../data/county_lookup_2019-2023ACS.csv")
@@ -36,43 +58,83 @@ county_init_inf = read_csv("../data/all_US_initial_infected.csv") %>%
   left_join(county_per_state, by="STATE_NAME") %>%
   mutate(
     STATE_NAME_DIR = str_replace_all(STATE_NAME, " ", "-"),
-    base_file = base_file
+    base_file = base_file,
+    vax_file = vax_file
   ) %>%
-  separate(base_file, into = c(NA, NA, NA, "FILENAME_ONLY"), sep="\\/", remove=T) %>%
+  separate(base_file, into = c(NA, NA, NA, "BASE_FILENAME_ONLY"), sep="\\/", remove=T) %>%
+  separate(vax_file,  into = c(NA, NA, NA, "VAX_FILENAME_ONLY"),  sep="\\/", remove=T) %>%
   mutate(
-    FILENAME_ONLY = replace_STATE_tokens(FILENAME_ONLY, STATE_NAME_DIR),
-    OUTPUT_FILE_PATH = paste0("../data/", STATE_NAME_DIR, "/", FILENAME_ONLY)
+    BASE_FILENAME_ONLY = replace_STATE_tokens(BASE_FILENAME_ONLY, STATE_NAME_DIR),
+    BASE_OUTPUT_FILE_PATH = paste0("../data/", STATE_NAME_DIR, "/", BASE_FILENAME_ONLY),
+    VAX_FILENAME_ONLY = replace_STATE_tokens(VAX_FILENAME_ONLY, STATE_NAME_DIR),
+    VAX_OUTPUT_FILE_PATH = paste0("../data/", STATE_NAME_DIR, "/", VAX_FILENAME_ONLY)
   )
-  
 
 total_states = length(unique(county_init_inf$STATE_NAME_DIR))
+
+#//////////////////////////////
+#### BASE SIMULATION FILES ####
+base_template = jsonlite::fromJSON(base_file, simplifyVector = FALSE)
 for(i in 1:total_states){
   print(i)
   # grab row just for single state
   single_state = county_init_inf %>%
     slice(i)
   
-  state_template_copy = template
+  state_template_copy = base_template
   state_template = replace_STATE_tokens(state_template_copy, state_dir = single_state$STATE_NAME_DIR)
   state_template$initial_infected[[1]]$county   = single_state$fips
   state_template$initial_infected[[1]]$infected = single_state$init_inf_per_1M
   
-  write_json(state_template, single_state$OUTPUT_FILE_PATH, auto_unbox = TRUE, pretty = TRUE)
-  print(paste0("wrote file to ", single_state$OUTPUT_FILE_PATH))
+  write_json(state_template, single_state$BASE_OUTPUT_FILE_PATH, auto_unbox = TRUE, pretty = TRUE)
+  print(paste0("wrote file to ", single_state$BASE_OUTPUT_FILE_PATH))
+  
+} # end loop over states
+
+
+#/////////////////////////////////
+#### VACCINE SIMULATION FILES ####
+vax_template = jsonlite::fromJSON(vax_file, simplifyVector = FALSE)
+for(i in 1:total_states){
+  print(i)
+  # grab row just for single state
+  single_state = county_init_inf %>%
+    slice(i)
+  state_vax_ts = state_weekly_vax_given %>%
+    dplyr::filter(State == single_state$STATE_NAME)
+  
+  state_template_copy = vax_template
+  state_template = replace_STATE_tokens(state_template_copy, state_dir = single_state$STATE_NAME_DIR)
+  state_template$initial_infected[[1]]$county   = single_state$fips
+  state_template$initial_infected[[1]]$infected = single_state$init_inf_per_1M
+  
+  state_template$vaccine_model$parameters$vaccine_stockpile <- make_stockpile_json(state_vax_ts)
+  
+  write_json(state_template, single_state$VAX_OUTPUT_FILE_PATH, auto_unbox = TRUE, pretty = TRUE)
+  print(paste0("wrote file to ", single_state$VAX_OUTPUT_FILE_PATH))
   
 } # end loop over states
 
 
 #////////////////////////
 #### CREATE COMMANDS ####
-commands_script = county_init_inf %>%
+base_commands_script = county_init_inf %>%
   mutate(poetry_command_start = "poetry run python3 ../src/simulator_WSMS.py -l INFO -d 212 -i") %>%
   rowwise() %>%
-  mutate(final_poetry_command = paste(poetry_command_start, OUTPUT_FILE_PATH)) %>%
+  mutate(final_poetry_command = paste(poetry_command_start, BASE_OUTPUT_FILE_PATH)) %>%
+  ungroup() %>%
+  dplyr::select(final_poetry_command)
+vax_commands_script = county_init_inf %>%
+  mutate(poetry_command_start = "poetry run python3 ../src/simulator_WSMS.py -l INFO -d 212 -i") %>%
+  rowwise() %>%
+  mutate(final_poetry_command = paste(poetry_command_start, VAX_OUTPUT_FILE_PATH)) %>%
   ungroup() %>%
   dplyr::select(final_poetry_command)
 
-write.table(commands_script,
+all_commands_script = base_commands_script %>%
+  bind_rows(vax_commands_script)
+
+write.table(all_commands_script,
             "../US_States/state_commands.txt",
             sep = "", col.names = FALSE,  row.names = FALSE, quote = FALSE)
 
