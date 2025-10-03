@@ -5,46 +5,54 @@ library(tidyverse)
 #//////////////////////
 #### READ POP DATA ####
 # ACS 2019-2023 County total population
-county_lookup_df = read_csv("../data/county_lookup_2019-2023ACS.csv")
-source("../data/private_input_data/api_keys.R")
-## Get population estimates
-acs_vars = 
-  tibble(acs_variable_code = sprintf("B01001_%0.3d", c(3:25, 27:49)), ## 3:25 males, 27:49 females
-       age_grouping = rep(c('0-4', '5-9', '10-14', '15-17', 
-                            '18-19', '20', '21','22-24',
-                            '25-29', '30-34', '35-39', '40-44', 
-                            '45-49', '50-54', '55-59', '60-61', 
-                            '62-64', '65-66', '67-69', '70-74', 
-                            '75-79', '80-84', '85+'), 2))
+us_file_path = "../data/all_US_county_pop_by_age_2019-2023ACS.csv"
+if(!file.exists(us_file_path)){
+  county_lookup_df = read_csv("../data/county_lookup_2019-2023ACS.csv")
+  source("../data/private_input_data/api_keys.R")
+  ## Get population estimates
+  acs_vars = 
+    tibble(acs_variable_code = sprintf("B01001_%0.3d", c(3:25, 27:49)), ## 3:25 males, 27:49 females
+           age_grouping = rep(c('0-4', '5-9', '10-14', '15-17', 
+                                '18-19', '20', '21','22-24',
+                                '25-29', '30-34', '35-39', '40-44', 
+                                '45-49', '50-54', '55-59', '60-61', 
+                                '62-64', '65-66', '67-69', '70-74', 
+                                '75-79', '80-84', '85+'), 2))
+  
+  age_dict = tibble(acs_age_group = c('0-4', '5-9', '10-14', '15-17', 
+                                      '18-19', '20', '21','22-24',
+                                      '25-29', '30-34', '35-39', '40-44', 
+                                      '45-49', '50-54', '55-59', '60-61', 
+                                      '62-64', '65-66', '67-69', '70-74', 
+                                      '75-79', '80-84', '85+'),
+                    age_group = c('0-4', '5-17', '5-17', '5-17', 
+                                  '18-49', '18-49', '18-49', '18-49',
+                                  '18-49', '18-49', '18-49', '18-49',
+                                  '18-49', '50-64', '50-64', '50-64',
+                                  '50-64', '65+', '65+', '65+',
+                                  '65+', '65+', '65+'))
+  
+  county_age_pop = get_acs(geography="county", variables= acs_vars$acs_variable_code, geometry=FALSE, year = 2023) %>% 
+    left_join(acs_vars, by = c('variable' = 'acs_variable_code')) %>% 
+    left_join(age_dict, by = c('age_grouping' = 'acs_age_group')) %>%
+    group_by(GEOID, age_group) %>% 
+    summarize(pop = sum(estimate), .groups = "drop") %>%
+    rename(fips=GEOID) %>%
+    left_join(county_lookup_df, by=c("fips"="COUNTY_FIPS"))
+  
+  write.csv(county_age_pop, us_file_path, row.names = FALSE, quote = FALSE)
+}else{
+  county_age_pop = read_csv(us_file_path)
+} # end if county pop data already exists
 
-age_dict = tibble(acs_age_group = c('0-4', '5-9', '10-14', '15-17', 
-                                    '18-19', '20', '21','22-24',
-                                    '25-29', '30-34', '35-39', '40-44', 
-                                    '45-49', '50-54', '55-59', '60-61', 
-                                    '62-64', '65-66', '67-69', '70-74', 
-                                    '75-79', '80-84', '85+'),
-                  age_group = c('0-4', '5-17', '5-17', '5-17', 
-                                '18-49', '18-49', '18-49', '18-49',
-                                '18-49', '18-49', '18-49', '18-49',
-                                '18-49', '50-64', '50-64', '50-64',
-                                '50-64', '65+', '65+', '65+',
-                                '65+', '65+', '65+'))
 
-county_age_pop = get_acs(geography="county", variables= acs_vars$acs_variable_code, geometry=FALSE, year = 2023) %>% 
-  left_join(acs_vars, by = c('variable' = 'acs_variable_code')) %>% 
-  left_join(age_dict, by = c('age_grouping' = 'acs_age_group')) %>%
-  group_by(GEOID, age_group) %>% 
-  summarize(pop = sum(estimate), .groups = "drop") %>%
-  rename(fips=GEOID) %>%
-  left_join(county_lookup_df, by=c("fips"="COUNTY_FIPS"))
-
+#/////////////////////////////
+#### WRITE TO STATE FILES ####
 county_age_pop_spread = county_age_pop %>%
   spread(age_group, pop) %>%
   dplyr::select(STATE_NAME, COUNTY_NAME, fips, `0-4`, `5-17`, `18-49`, `50-64`, `65+`) %>%
   drop_na() # drops na's for Puerto Rico
 
-#/////////////////////////////
-#### WRITE TO STATE FILES ####
 state_names = unique(county_age_pop_spread$STATE_NAME) # length(state_names) = 51
 for(state in state_names){
   state_specific_df = county_age_pop_spread %>%
@@ -77,7 +85,8 @@ if(!file.exists(init_inf_file)){
               COUNTY_NAME = first(COUNTY_NAME),
               fips = first(fips),
               .groups = "drop") %>%
-    mutate(init_inf_per_1M = ceiling(total_pop/1000000))
+    mutate(init_inf_per_1M = ceiling(total_pop/1000000)) %>%
+    drop_na()
   
   
   ' # If making within county age/risk based init inf
