@@ -67,6 +67,20 @@ for(state in state_names){
 
 init_inf_file = "../data/all_US_initial_infected.csv"
 if(!file.exists(init_inf_file)){
+  
+  init_inf_df = county_age_pop %>%
+    group_by(STATE_NAME, COUNTY_NAME, fips) %>%
+    summarise(county_pop = sum(pop), .groups = "drop") %>%
+    group_by(STATE_NAME) %>%
+    arrange(desc(county_pop), .by_group = T) %>%
+    summarise(total_pop = sum(county_pop), 
+              COUNTY_NAME = first(COUNTY_NAME),
+              fips = first(fips),
+              .groups = "drop") %>%
+    mutate(init_inf_per_1M = ceiling(total_pop/1000000))
+  
+  
+  ' # If making within county age/risk based init inf
   risk_ratios = read_csv("../data/all_US_high-risk-ratios-detailed.csv")
   init_inf_df = county_age_pop %>%
     left_join(risk_ratios, by=c("age_group", "STATE_NAME")) %>%
@@ -85,6 +99,7 @@ if(!file.exists(init_inf_file)){
            `init_inf_half-percent_18-49_capped` = ifelse(`init_inf_half-percent_18-49`>10000, 10000, `init_inf_half-percent_18-49`)
     ) %>%
     drop_na()
+    '
   
   write.csv(init_inf_df,
             init_inf_file,
