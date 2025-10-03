@@ -32,7 +32,7 @@ county_per_state = county_df %>%
 # Get all county initial infected
 county_init_inf = read_csv("../data/all_US_initial_infected.csv") %>%
   drop_na() %>%
-  dplyr::select("fips", "age_group", "pop", "STATE_NAME", "COUNTY_NAME", "STATE_FIPS", "init_inf_per_1M") %>%
+  #dplyr::select("fips", "age_group", "pop", "STATE_NAME", "COUNTY_NAME", "STATE_FIPS", "init_inf_per_1M") %>%
   left_join(county_per_state, by="STATE_NAME") %>%
   mutate(
     STATE_NAME_DIR = str_replace_all(STATE_NAME, " ", "-"),
@@ -56,7 +56,6 @@ for(i in 1:total_states){
   state_template = replace_STATE_tokens(state_template_copy, state_dir = single_state$STATE_NAME_DIR)
   state_template$initial_infected[[1]]$county   = single_state$fips
   state_template$initial_infected[[1]]$infected = single_state$init_inf_per_1M
-  state_template$output_dir_path = single_state$STATE_NAME_DIR
   
   write_json(state_template, single_state$OUTPUT_FILE_PATH, auto_unbox = TRUE, pretty = TRUE)
   print(paste0("wrote file to ", single_state$OUTPUT_FILE_PATH))
@@ -67,14 +66,14 @@ for(i in 1:total_states){
 #////////////////////////
 #### CREATE COMMANDS ####
 commands_script = county_init_inf %>%
-  mutate(poetry_command_start = "poetry run python3 ../src/simulator_WSMS.py -l INFO -d 180 -i") %>%
+  mutate(poetry_command_start = "poetry run python3 ../src/simulator_WSMS.py -l INFO -d 212 -i") %>%
   rowwise() %>%
   mutate(final_poetry_command = paste(poetry_command_start, OUTPUT_FILE_PATH)) %>%
   ungroup() %>%
   dplyr::select(final_poetry_command)
 
 write.table(commands_script,
-            "../R0_sensitivity_analysis/r0_sensitivity_commands.txt",
+            "../US_States/state_commands.txt",
             sep = "", col.names = FALSE,  row.names = FALSE, quote = FALSE)
 
 
