@@ -1,8 +1,8 @@
 {
-  "output_dir_path": "Arizona",
+  "output_dir_path": "Arizona_BASELINE",
   "realization_range": [
     "0",
-    "9"
+    "99"
   ],
   "batch_num": "0",
   "data": {
@@ -89,7 +89,7 @@
   "initial_infected": [
     {
       "county": "04013",
-      "infected": 1,
+      "infected": 8,
       "age_group": "2"
     }
   ],

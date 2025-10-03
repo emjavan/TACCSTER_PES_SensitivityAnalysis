@@ -1,8 +1,8 @@
 {
-  "output_dir_path": "Alaska",
+  "output_dir_path": "Alaska_BASELINE",
   "realization_range": [
     "0",
-    "9"
+    "99"
   ],
   "batch_num": "0",
   "data": {

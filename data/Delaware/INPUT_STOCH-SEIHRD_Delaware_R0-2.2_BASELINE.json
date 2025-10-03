@@ -1,8 +1,8 @@
 {
-  "output_dir_path": "Delaware",
+  "output_dir_path": "Delaware_BASELINE",
   "realization_range": [
     "0",
-    "9"
+    "99"
   ],
   "batch_num": "0",
   "data": {
@@ -89,7 +89,7 @@
   "initial_infected": [
     {
       "county": "10003",
-      "infected": 1,
+      "infected": 2,
       "age_group": "2"
     }
   ],

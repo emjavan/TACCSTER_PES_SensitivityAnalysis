@@ -1,8 +1,8 @@
 {
-  "output_dir_path": "California",
+  "output_dir_path": "California_BASELINE",
   "realization_range": [
     "0",
-    "9"
+    "99"
   ],
   "batch_num": "0",
   "data": {
@@ -89,7 +89,7 @@
   "initial_infected": [
     {
       "county": "06037",
-      "infected": 3,
+      "infected": 40,
       "age_group": "2"
     }
   ],

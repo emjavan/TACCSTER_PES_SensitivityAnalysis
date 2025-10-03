@@ -1,8 +1,8 @@
 {
-  "output_dir_path": "North-Dakota",
+  "output_dir_path": "North-Dakota_BASELINE",
   "realization_range": [
     "0",
-    "9"
+    "99"
   ],
   "batch_num": "0",
   "data": {

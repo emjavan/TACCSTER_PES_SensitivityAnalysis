@@ -1,8 +1,8 @@
 {
-  "output_dir_path": "Alabama",
+  "output_dir_path": "Alabama_BASELINE",
   "realization_range": [
     "0",
-    "9"
+    "99"
   ],
   "batch_num": "0",
   "data": {
@@ -89,7 +89,7 @@
   "initial_infected": [
     {
       "county": "01073",
-      "infected": 1,
+      "infected": 6,
       "age_group": "2"
     }
   ],

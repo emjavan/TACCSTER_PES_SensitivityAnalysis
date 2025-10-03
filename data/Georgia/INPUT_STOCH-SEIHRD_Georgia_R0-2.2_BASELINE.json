@@ -1,8 +1,8 @@
 {
-  "output_dir_path": "Georgia",
+  "output_dir_path": "Georgia_BASELINE",
   "realization_range": [
     "0",
-    "9"
+    "99"
   ],
   "batch_num": "0",
   "data": {
@@ -89,7 +89,7 @@
   "initial_infected": [
     {
       "county": "13121",
-      "infected": 1,
+      "infected": 11,
       "age_group": "2"
     }
   ],
