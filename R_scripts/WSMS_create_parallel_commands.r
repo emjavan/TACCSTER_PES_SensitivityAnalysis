@@ -1,33 +1,15 @@
+#////////////////////////////////////////////////////////////
+# Change the template files to be state specific
+#   then create the parallel commands to submit on LS6
+# This job took about 12h on 2 nodes, 64 tasks in parallel
+#   TX and GA take the longest to run at ~2sec per sim day
+#////////////////////////////////////////////////////////////
 
 #///////////////////////
 #### LOAD LIBRARIES ####
 library(jsonlite)
 library(tidyverse)
-
-#///////////////////
-#### HELPER FNS ####
-# Replace "STATE" tokens in all strings
-replace_STATE_tokens = function(x, state_dir) {
-  # match STATE when not adjacent to letters/digits (underscore is OK)
-  pat <- "(?<![A-Za-z0-9])STATE(?![A-Za-z0-9])"
-  if (is.character(x)) {
-    stringr::str_replace_all(x, pat, state_dir)
-  } else if (is.list(x)) {
-    lapply(x, replace_STATE_tokens, state_dir = state_dir)
-  } else x
-}
-
-# Turn a state's schedule into the vaccine_stockpile JSON list
-make_stockpile_json = function(state_df) {
-  state_df %>%
-    arrange(ReleaseDay) %>%
-    transmute(
-      day    = as.character(ReleaseDay),                  # keep as strings to match template
-      amount = as.character(round(TotalWeeklyNewFullProtect))
-    ) %>%
-    transpose()                                           # list of lists: list(list(day=..., amount=...), ...)
-}
-
+source("WSMS_fns.r")
 
 #//////////////////
 #### LOAD DATA ####
