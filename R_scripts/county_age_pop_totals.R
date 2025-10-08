@@ -78,10 +78,12 @@ if(!file.exists(init_inf_file)){
   
   init_inf_df = county_age_pop %>%
     group_by(STATE_NAME, COUNTY_NAME, fips) %>%
-    summarise(county_pop = sum(pop), .groups = "drop") %>%
+    summarise(county_pop = sum(pop), 
+              .groups = "drop") %>%
     group_by(STATE_NAME) %>%
     arrange(desc(county_pop), .by_group = T) %>%
     summarise(total_pop = sum(county_pop), 
+              total_counties = n(),
               COUNTY_NAME = first(COUNTY_NAME),
               fips = first(fips),
               .groups = "drop") %>%
