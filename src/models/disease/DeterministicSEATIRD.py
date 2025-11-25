@@ -60,7 +60,7 @@ class DeterministicSEATIRD(DiseaseModel):
         self.chi            = 1/float(self.parameters.disease_parameters['chi'])
 
         # the user enters one nu value for each age group, assumed to be low risk
-        # population. use multiplier 9x to derive values for high risk population
+        # population. use multiplier 6x to derive values for high risk population
         self.nu_values      = [[],[]]
         self.nu_values[0]   = [float(x)   for x in self.parameters.disease_parameters['nu']]
         self.nu_values[1]   = [float(x)*6 for x in self.parameters.disease_parameters['nu']]
