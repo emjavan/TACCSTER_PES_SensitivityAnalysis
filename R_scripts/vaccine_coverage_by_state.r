@@ -75,6 +75,13 @@ all_age_df = adult_flu_vc %>%
          ) %>%
   ungroup()
 
+write.csv(
+  all_age_df,
+  "../data/all_US_weekly_vax_adult-ped.csv",
+  row.names = FALSE, quote = FALSE
+)
+
+
 # Make weeks into integer days in simulation to release vaccines from stockpile
 day0 = as.Date("2024-10-01")
 weekly_ts = all_age_df %>%
