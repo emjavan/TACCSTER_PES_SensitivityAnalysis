@@ -55,7 +55,7 @@ def compute_w(prop_E_to_IA,
     Compute per-group infectiousness weights w_j.
     prop_E_to_IA : array-like (n,)
         Fraction asymptomatic for each group j.
-    Other args: scalar rates (already 1/days).
+    A_to_B_rate: scalar rates (already 1/days).
     rel_inf_* : relative infectiousness multipliers.
     """
     prop_E_to_IA = np.asarray(prop_E_to_IA, dtype=float)
@@ -71,19 +71,28 @@ def compute_w(prop_E_to_IA,
     w = (1.0 - prop_E_to_IA) * symptomatic_block + prop_E_to_IA * asymptomatic_block
     return w
 
+def spectral_radius(K: np.ndarray) -> float:
+    """
+    R0 = spectral radius of K (dominant eigenvalue).
+    """
+    eigvals = np.linalg.eigvals(K)
+    # Numerical noise can introduce tiny imaginary parts; take real component.
+    return float(np.max(eigvals.real))
 
 def estimate_baseline_beta(
-    contact_matrix: list[list[float]],   # (n,n) C, rows susceptible i, cols infectious j
-    R0: float,
-    w: np.ndarray,                # (n,) from compute_w
-    susceptibility: np.ndarray | None = None,  # optional (n,) S_i; defaults to 1s
+    contact_matrix: list[list[float]],         # (n,n) matrix C, rows susceptible i, cols infectious j
+    R0: float,                                 # scalar
+    w: np.ndarray,                             # (n,) vector to diagonal matrix from compute_w
+    susceptibility: np.ndarray | None = None,  # optional (n,) S_i; defaults to 1s = identity matrix
 ) -> float:
     """
     Compute beta so that rho( beta * S * C * diag(w) ) = R0.
+    rho() refers to the spectral radius = the dominant eigenvalue of matrix M
+    beta is scalar so beta * rho(M) = R0 => beta = R0/rho(M), where M = S * C * diag(w)
     """
     C = np.array(contact_matrix, dtype=float)
     w = np.asarray(w, dtype=float)
-    n = C.shape[0]
+    n = C.shape[0] # number of age groups
     assert C.shape == (n, n), "contact_matrix must be square"
     assert w.shape == (n,), "w must be length-n"
 
@@ -94,9 +103,8 @@ def estimate_baseline_beta(
         assert s.shape == (n,), "susceptibility must be length-n"
         S_mat = np.diag(s)
 
-    M = S_mat @ C @ np.diag(w)             # this is the beta-free NGM core
-    eigvals = np.linalg.eigvals(M)
-    rho = float(np.max(eigvals.real))      # spectral radius
+    M = S_mat @ C @ np.diag(w)    # this is the beta-free NGM core
+    rho = spectral_radius(M)      # spectral radius
 
     if rho <= 0:
         raise ValueError("Spectral radius is non-positive; check inputs (C, w, susceptibility).")
@@ -115,13 +123,6 @@ def build_NGM(beta: float, contact_matrix: np.ndarray, w: np.ndarray, susceptibi
     S_mat = np.diag(susceptibility) if susceptibility is not None else np.eye(n)
     return beta * (S_mat @ C @ np.diag(w))
 
-def spectral_radius(K: np.ndarray) -> float:
-    """
-    R0 = spectral radius of K (dominant eigenvalue).
-    """
-    eigvals = np.linalg.eigvals(K)
-    # Numerical noise can introduce tiny imaginary parts; take real component.
-    return float(np.max(eigvals.real))
 
 def SEIHRD_model(y,
                  transmission_rate, # S => E
@@ -264,9 +265,13 @@ class StochasticSEIHRD(DiseaseModel):
                   self.IP_to_IS_rate, self.IS_to_H_rate, self.IS_to_R_rate, self.IA_to_R_rate,
                   rel_inf_IP=self.rel_inf_IP_to_IS, rel_inf_IA=self.rel_inf_IA_to_IS)
         self.beta  = estimate_baseline_beta(self.parameters.np_contact_matrix, self.R0, w, self.relative_susceptibility)
+        print(">>>>>>>>>>>><<<<<<<<<<<<")
+        print(self.beta)
+        print(w)
 
         # Recalc/derive passed R0 with the beta we estimate
         NGM_K = build_NGM(self.beta, self.parameters.np_contact_matrix, w, self.relative_susceptibility)
+        print(NGM_K)
         rederive_R0 = spectral_radius(NGM_K)
         logger.info(f'original R0={self.R0} and the derived one is {rederive_R0}')
 
