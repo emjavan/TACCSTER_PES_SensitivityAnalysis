@@ -10,8 +10,6 @@ from models.treatments.Vaccination import Vaccination
 
 logger = logging.getLogger(__name__)
 
-from typing import Final
-
 def adjust_two_way_split_proportion(
     *,
     desired_realized_fraction: float,
@@ -46,6 +44,45 @@ def adjust_two_way_split_proportion(
     corrected_fraction = (desired_realized_fraction * competing_rate) / denom
 
     return corrected_fraction
+#### Estimate the generation time based only on input parameters
+def compute_generation_time(
+        E_out_rate, IP_to_IS_rate, IS_to_H_rate, IS_to_R_rate, IA_to_R_rate,
+        prop_E_to_IA, rel_inf_IP_to_IS=1.0, rel_inf_IA_to_IS=1.0, rel_inf_IS=1.0):
+    """
+    Approximate mean generation time (days) from input parameters.
+    Generation time (GT) is time interval between the infection of a primary case (infector)
+      and the infection of a secondary case (infectee).
+    Generation time is about WHEN infection occurs, not how many infections occur (R0).
+    In the real world, we observe the serial interval based on symptom onset, but here we can estimate GT.
+
+    Returns
+    -------
+    float : mean generation time (days)
+    """
+    # ----- durations -----
+    D_E  = 1.0 / E_out_rate               # latent period
+    D_IP = 1.0 / IP_to_IS_rate
+    D_IS = 1.0 / (IS_to_H_rate + IS_to_R_rate)
+    D_IA = 1.0 / IA_to_R_rate
+
+    # ----- asymptomatic -----
+    prop_asymp      = np.array(prop_E_to_IA, dtype=float)   # per-age, then take mean
+    prop_asymp_mean = prop_asymp.mean()
+
+    # ----- total infectious durations (weighted) -----
+    W_IP = (1 - prop_asymp_mean) * rel_inf_IP_to_IS * D_IP
+    W_IS = (1 - prop_asymp_mean) * rel_inf_IS       * D_IS
+    W_IA = prop_asymp_mean       * rel_inf_IA_to_IS * D_IA
+    W_total = W_IP + W_IS + W_IA
+
+    # ----- mean generation time numerator -----
+    numerator = (
+        W_IP * (D_E + D_IP) +
+        W_IS * (D_E + D_IP + D_IS) +
+        W_IA * (D_E + D_IA)
+    )
+
+    return numerator / W_total
 
 #### Get beta from R0 and Next Generation Matrix
 def compute_w(prop_E_to_IA,
@@ -87,7 +124,7 @@ def estimate_baseline_beta(
 ) -> float:
     """
     Compute beta so that rho( beta * S * C * diag(w) ) = R0.
-    rho() refers to the spectral radius = the dominant eigenvalue of matrix M
+    rho() refers to the spectral radius = the dominant eigenvalue of matrix K
     beta is scalar so beta * rho(M) = R0 => beta = R0/rho(M), where M = S * C * diag(w)
     """
     C = np.array(contact_matrix, dtype=float)
@@ -136,7 +173,7 @@ def SEIHRD_model(y,
                  IA_to_R_rate,      # IA => R,
                  rng):
     """
-    SEIRS compartmental model ODE function.
+    SEIHRD compartmental model ODE function.
     Parameters:
         y (List[float]): Current values for compartments [S, E, IA, IP, IS, H, R, D]
         transmission_rate (float): beta modified by NPIs, vaccine effectiveness, contact rate,
@@ -250,7 +287,6 @@ class StochasticSEIHRD(DiseaseModel):
         self.rel_inf_IP_to_IS = float(self.parameters.disease_parameters['rel_inf_IP_to_IS'])
         self.rel_inf_IA_to_IS = float(self.parameters.disease_parameters['rel_inf_IA_to_IS'])
 
-
         # Relative susceptibility required for travel model, make 1's if not specified
         num_age_grps = self.parameters.number_of_age_groups
         self.relative_susceptibility = [
@@ -265,15 +301,18 @@ class StochasticSEIHRD(DiseaseModel):
                   self.IP_to_IS_rate, self.IS_to_H_rate, self.IS_to_R_rate, self.IA_to_R_rate,
                   rel_inf_IP=self.rel_inf_IP_to_IS, rel_inf_IA=self.rel_inf_IA_to_IS)
         self.beta  = estimate_baseline_beta(self.parameters.np_contact_matrix, self.R0, w, self.relative_susceptibility)
-        print(">>>>>>>>>>>><<<<<<<<<<<<")
-        print(self.beta)
-        print(w)
+        logger.info(f'baseline beta is {self.beta}')
 
         # Recalc/derive passed R0 with the beta we estimate
         NGM_K = build_NGM(self.beta, self.parameters.np_contact_matrix, w, self.relative_susceptibility)
-        print(NGM_K)
         rederive_R0 = spectral_radius(NGM_K)
         logger.info(f'original R0={self.R0} and the derived one is {rederive_R0}')
+
+        # ----------------------------------------------------
+        gen_time = compute_generation_time(
+            self.E_out_rate, self.IP_to_IS_rate, self.IS_to_H_rate, self.IS_to_R_rate, self.IA_to_R_rate,
+            self.prop_E_to_IA, self.rel_inf_IP_to_IS, self.rel_inf_IA_to_IS)
+        logger.info(f'Estimated mean generation time is {gen_time}')
 
         # this isn't used in this file, but _calculate_beta_w_npi inherits from this init
         self.npis_schedule = disease_model.npis_schedule
