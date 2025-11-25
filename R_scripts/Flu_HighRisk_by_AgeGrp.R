@@ -58,7 +58,7 @@ library(srvyr)
 # Read .XPT file using haven
 # Kentucky (21) and Pennsylvania (42) did not collect enough data for 2023 survey so using 2022
 brfss_2022 = haven::read_xpt("../data/BRFSS/LLCP2022.XPT") %>% # .XPT is the SAS transport file
-  filter(`_STATE` %in% c(21, 42))
+  dplyr::filter(`_STATE` %in% c(21, 42))
 brfss = haven::read_xpt("../data/BRFSS/LLCP2023.XPT") %>% # .XPT is the SAS transport file
   bind_rows(brfss_2022)
 
@@ -151,7 +151,7 @@ brfss_high_risk_df <- brfss %>%
       TRUE ~ 0                    # at least one known and none are "yes"
     )
   ) %>%
-  filter(!(STATE_FIPS %in% c("66", "78", "72") )) # remove Guam, Puerto Rico, Virgin Islands if present
+  dplyr::filter(!(STATE_FIPS %in% c("66", "78", "72") )) # remove Guam, Puerto Rico, Virgin Islands if present
 
 #///////////////////////
 #### NSCH HIGH RISK ####
@@ -222,7 +222,7 @@ nsch_high_risk_df <- nsch %>%
       TRUE ~ 0                    # at least one known and none are "yes"
     )
   ) %>%
-  filter(!(STATE_FIPS %in% c("66", "78", "72") )) # remove Guam, Puerto Rico, Virgin Islands if present
+  dplyr::filter(!(STATE_FIPS %in% c("66", "78", "72") )) # remove Guam, Puerto Rico, Virgin Islands if present
 
 #///////////////////////
 #### DESIGN SURVEYS ####
@@ -289,7 +289,7 @@ states = unique(all_age_df$STATE_NAME)
 for(state in states){
   state_name_hypen = str_replace_all(state, " ", "-")
   state_age_df = all_age_df %>%
-    filter(STATE_NAME == state) %>%
+    dplyr::filter(STATE_NAME == state) %>%
     arrange(age_group)
   
   file_path_detailed = paste0("../data/", state_name_hypen, "/state_", state_name_hypen, "_high-risk-ratios-flu-detailed.csv")
