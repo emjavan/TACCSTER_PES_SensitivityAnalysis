@@ -60,12 +60,23 @@ state_county_flows = us_county_flows_clean %>% # 122,339 rows
          ) %>%
   #dplyr::select(state_name_residence, contains(c("fips", "workers")), -starts_with("state_fips"), -ends_with("_name_workplace") ) %>%
   full_join(county_pops, by="county_fips_residence") %>% # 63,212
+  group_by(county_fips_residence) %>%
+  mutate(total_residence_flow_out = sum(workers_in_commuting_flow),
+         total_residence_flow_out_moe = sum(workers_margin_of_error) ) %>%
+  ungroup() %>%
   rowwise() %>%
   mutate(upper_limit_workers_in_commuting_flow = as.numeric(workers_in_commuting_flow) + as.numeric(workers_margin_of_error),
-         fraction_pop_in_commuting_flow = round(upper_limit_workers_in_commuting_flow/county_pop_2020, 2)
+         fraction_pop_in_commuting_flow_upper = round(upper_limit_workers_in_commuting_flow/county_pop_2020, 2),
+         fraction_pop_in_commuting_flow_median = round(workers_in_commuting_flow/county_pop_2020, 2),
          ) %>%
   ungroup() %>%
   dplyr::filter(!(state_name_residence=="Puerto Rico")) # 61,508
+
+
+write.csv(state_county_flows,
+          "../data/county_commuting_flow_2016-2020ACS_All-US.csv",
+          row.names = F
+          )
 
 
 #/////////////////////////////
